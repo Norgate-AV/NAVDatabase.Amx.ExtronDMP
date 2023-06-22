@@ -99,8 +99,8 @@ jobs:
     needs: [setup]
 
     steps:
-      - name: Run Genlinx
-        # run: genlinx build -c
+      # - name: Run Genlinx
+      #   run: genlinx build -c
 
       - name: Upload build log only if failure
         uses: actions/upload-artifact@v3
@@ -136,7 +136,7 @@ jobs:
           release-count: "0"
           create-summary: true
           preset: "conventionalcommits"
-          # config-file-path: "./.changelogrc.json"
+          config-file-path: "./.changelogrc.json"
 
       - name: Create Github Release
         uses: actions/create-release@v1
