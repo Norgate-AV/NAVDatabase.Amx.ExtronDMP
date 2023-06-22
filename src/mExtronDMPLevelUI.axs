@@ -4,7 +4,6 @@ MODULE_NAME='mExtronDMPLevelUI'	(
 						)
 
 (***********************************************************)
-#include 'NAVFoundation.Core.axi'
 #include 'NAVFoundation.ModuleBase.axi'
 #include 'NAVFoundation.Math.axi'
 #include 'NAVFoundation.UIUtils.axi'

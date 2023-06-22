@@ -5,7 +5,6 @@ MODULE_NAME='mExtronDMPComm'	(
 					)
 
 (***********************************************************)
-#include 'NAVFoundation.Core.axi'
 #include 'NAVFoundation.ModuleBase.axi'
 #include 'NAVFoundation.SocketUtils.axi'
 

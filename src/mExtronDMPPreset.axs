@@ -4,7 +4,6 @@ MODULE_NAME='mExtronDMPPreset'	(
 					)
 
 (***********************************************************)
-#include 'NAVFoundation.Core.axi'
 #include 'NAVFoundation.ModuleBase.axi'
 
 /*

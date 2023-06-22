@@ -5,7 +5,6 @@ MODULE_NAME='mExtronDMPFaderUI'	(
 						)
 
 (***********************************************************)
-#include 'NAVFoundation.Core.axi'
 #include 'NAVFoundation.ModuleBase.axi'
 #include 'NAVFoundation.Math.axi'
 #include 'NAVFoundation.UIUtils.axi'
