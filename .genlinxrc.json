@@ -1,0 +1,12 @@
+{
+    "build": {
+        "nlrc": {
+            "includePath": [
+                "C:\\Users\\DamienButt\\Norgate AV Dropbox\\Damien Butt\\Resources\\AMX\\Module Repositories\\Extron\\DMP\\src"
+            ],
+            "modulePath": [
+                "C:\\Users\\DamienButt\\Norgate AV Dropbox\\Damien Butt\\Resources\\AMX\\Module Repositories\\Extron\\DMP\\src"
+            ]
+        }
+    }
+}
