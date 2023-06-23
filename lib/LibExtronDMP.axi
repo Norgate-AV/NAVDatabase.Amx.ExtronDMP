@@ -70,12 +70,27 @@ struct _DspObject {
 }
 
 
+define_function integer GetStringArrayLength(char array[][]) {
+    stack_var integer x
+    stack_var integer max
+
+    max = max_length_array(array)
+
+    for (x = max; x >= 1; x--) {
+        if (array[x] == '') {
+            continue
+        }
+
+        return x
+    }
+
+    return max
+}
+
+
 define_function ObjectTagInit(_DspObject object) {
     switch (upper_string(object.Attribute.Id)) {
-        case ATTRIBUTE_ID_GAIN: {
-            object.Tag[1] = "ATTRIBUTE_RESPONSE_HEADER, object.Attribute.Id, format('%01d', atoi(object.Attribute.Value[1])), '*'"
-            object.Tag[2] = "ATTRIBUTE_RESPONSE_HEADER, object.Attribute.Id, format('%02d', atoi(object.Attribute.Value[1])), '*'"
-        }
+        case ATTRIBUTE_ID_GAIN:
         case ATTRIBUTE_ID_MUTE: {
             object.Tag[1] = "ATTRIBUTE_RESPONSE_HEADER, object.Attribute.Id, format('%01d', atoi(object.Attribute.Value[1])), '*'"
             object.Tag[2] = "ATTRIBUTE_RESPONSE_HEADER, object.Attribute.Id, format('%02d', atoi(object.Attribute.Value[1])), '*'"
@@ -87,6 +102,8 @@ define_function ObjectTagInit(_DspObject object) {
             object.Tag[4] = "ATTRIBUTE_RESPONSE_HEADER_GROUP_SOFT_LIMITS, format('%02d', atoi(object.Attribute.Value[1])), '*'"
         }
     }
+
+    set_length_array(object.Tag, GetStringArrayLength(object.Tag))
 }
 
 
