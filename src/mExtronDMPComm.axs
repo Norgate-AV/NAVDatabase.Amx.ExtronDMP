@@ -8,6 +8,7 @@ MODULE_NAME='mExtronDMPComm'	(
 #DEFINE USING_NAV_DEVICE_PRIORITY_QUEUE_SEND_NEXT_ITEM_EVENT_CALLBACK
 #DEFINE USING_NAV_DEVICE_PRIORITY_QUEUE_FAILED_RESPONSE_EVENT_CALLBACK
 #DEFINE USING_NAV_MODULE_BASE_PROPERTY_EVENT_CALLBACK
+#DEFINE USING_NAV_STRING_GATHER_CALLBACK
 #include 'NAVFoundation.ModuleBase.axi'
 #include 'NAVFoundation.SocketUtils.axi'
 #include 'NAVFoundation.DevicePriorityQueue.axi'
@@ -81,9 +82,6 @@ volatile long register[]	= { 500 }
 
 volatile _Object object[MAX_OBJECTS]
 volatile _NAVCredential credential
-
-volatile char rxBuffer[NAV_MAX_BUFFER]
-volatile integer semaphore
 
 volatile char ipAddress[15]
 volatile integer ipConnected = false
@@ -205,56 +203,41 @@ define_function ReInitializeObjects() {
 }
 
 
-define_function Process() {
-    stack_var char temp[NAV_MAX_BUFFER]
-    stack_var integer responseMessID
+define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
+    NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_PARSING_STRING_FROM, dvPort, args.Data))
 
-    semaphore = true
+    args.Data = NAVStripCharsFromRight(args.Data, 2)
 
-    while (length_array(rxBuffer) && NAVContains(rxBuffer, "NAV_LF")) {
-        temp = remove_string(rxBuffer, "NAV_LF", 1)
+    select {
+        active (NAVContains(args.Data, 'Vrb')): {
+            communicating = true
 
-        if (!length_array(temp)) {
-            continue
-        }
-
-        NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_PARSING_STRING_FROM, dvPort, temp))
-
-        temp = NAVStripCharsFromRight(temp, 2)
-
-        select {
-            active (NAVContains(temp, 'Vrb')): {
-                communicating = true
-
-                if (!initialized && readyToInitialize) {
-                    InitializeObjects()
-                }
+            if (!initialized && readyToInitialize) {
+                InitializeObjects()
             }
-            active (true): {
-                stack_var integer x
-                stack_var integer z
+        }
+        active (true): {
+            stack_var integer x
+            stack_var integer z
 
-                for (x = 1; x <= length_array(vdvCommObjects); x++) {
-                    for (z = 1; z <= MAX_OBJECT_TAGS; z++) {
-                        if (!NAVContains(temp, objectTag[z][x])) {
-                            continue
-                        }
-
-                        send_string vdvCommObjects[x], "'RESPONSE_MSG<', temp, '>'"
-                        NAVLog("'EXTRON_DMP_SENDING_RESPONSE_MSG<', temp, '|', itoa(x), '>'")
-
-                        break
+            for (x = 1; x <= length_array(vdvCommObjects); x++) {
+                for (z = 1; z <= MAX_OBJECT_TAGS; z++) {
+                    if (!NAVContains(args.Data, objectTag[z][x])) {
+                        continue
                     }
+
+                    send_string vdvCommObjects[x], "'RESPONSE_MSG<', args.Data, '>'"
+                    NAVLog("'EXTRON_DMP_SENDING_RESPONSE_MSG<', args.Data, '|', itoa(x), '>'")
 
                     break
                 }
+
+                break
             }
         }
-
-        NAVDevicePriorityQueueGoodResponse(priorityQueue)
     }
 
-    semaphore = false
+    NAVDevicePriorityQueueGoodResponse(priorityQueue)
 }
 
 
@@ -293,7 +276,7 @@ define_function NAVModulePropertyEventCallback(_NAVModulePropertyEvent event) {
 (*                STARTUP CODE GOES BELOW                  *)
 (***********************************************************)
 DEFINE_START {
-    create_buffer dvPort, rxBuffer
+    create_buffer dvPort, module.RxBuffer.Data
     Reset()
 }
 
@@ -322,12 +305,12 @@ data_event[dvPort] {
         NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_STRING_FROM, data.device, data.text))
 
         select {
-            active (NAVContains(rxBuffer, "'Password:'")): {
-                rxBuffer = "''"
+            active (NAVContains(module.RxBuffer.Data, "'Password:'")): {
+                module.RxBuffer.Data = "''"
                 SendString("credential.Password, NAV_CR, NAV_LF");
             }
-            active (1): {
-                if (!semaphore) { Process() }
+            active (true): {
+                NAVStringGather(module.RxBuffer, "NAV_LF")
             }
         }
     }
