@@ -291,7 +291,7 @@ data_event[dvPort] {
             send_command data.device,"'HSOFF'"
         }
 
-        timeline_create(TL_HEARTBEAT,heartbeat,length_array(heartbeat),TIMELINE_ABSOLUTE,TIMELINE_REPEAT)
+        NAVTimelineStart(TL_HEARTBEAT, heartbeat, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
 
         if (data.device.number == 0) {
             ipConnected = true
@@ -463,7 +463,7 @@ timeline_event[TL_REGISTER] {
     NAVLog("'EXTRON_DMP_REGISTER_SENT<', itoa(x), '>'")
 
     if (x == length_array(vdvCommObjects)) {
-        timeline_kill(timeline.id)
+        NAVTimelineStop(timeline.id)
     }
 }
 
