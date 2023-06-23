@@ -57,10 +57,6 @@ constant long TL_REGISTER	= 4
 constant integer MAX_QUEUE_COMMANDS = 50
 constant integer MAX_QUEUE_STATUS = 100
 
-constant integer TELNET_WILL	= $FB
-constant integer TELNET_DO	= $FD
-constant integer TELNET_DONT	= $FE
-constant integer TELNET_WONT	= $FC
 
 (***********************************************************)
 (*              DATA TYPE DEFINITIONS GO BELOW             *)
