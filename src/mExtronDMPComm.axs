@@ -49,6 +49,7 @@ DEFINE_DEVICE
 (*               CONSTANT DEFINITIONS GO BELOW             *)
 (***********************************************************)
 DEFINE_CONSTANT
+
 constant long TL_IP_CHECK = 1
 constant long TL_QUEUE_FAILED_RESPONSE	= 2
 constant long TL_HEARTBEAT	= 3
