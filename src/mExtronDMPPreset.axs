@@ -48,9 +48,6 @@ DEFINE_DEVICE
 (***********************************************************)
 DEFINE_CONSTANT
 
-constant long TL_DRIVE = 1
-
-
 (***********************************************************)
 (*              DATA TYPE DEFINITIONS GO BELOW             *)
 (***********************************************************)
@@ -61,18 +58,16 @@ DEFINE_TYPE
 (***********************************************************)
 DEFINE_VARIABLE
 
-volatile long ltDrive[] = { 200 }
+volatile integer isInitialized
 
-volatile integer iIsInitialized
+volatile integer registered
+volatile integer registerReady
+volatile integer registerRequested
 
-volatile integer iRegistered
-volatile integer iRegisterReady
-volatile integer iRegisterRequested
+volatile integer id
 
-volatile integer iID
-
-volatile integer iSemaphore
-volatile char cRxBuffer[NAV_MAX_BUFFER]
+volatile integer semaphore
+volatile char rxBuffer[NAV_MAX_BUFFER]
 
 
 (***********************************************************)
@@ -91,66 +86,66 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (* EXAMPLE: DEFINE_FUNCTION <RETURN_TYPE> <NAME> (<PARAMETERS>) *)
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
 
-define_function SendCommand(char cParam[]) {
-    NAVLog("'Command to ', NAVStringSurroundWith(NAVDeviceToString(vdvControl), '[', ']'), ': [', cParam, ']'")
-    send_command vdvControl, "cParam"
+define_function SendCommand(char param[]) {
+    NAVLog("'Command to ', NAVStringSurroundWith(NAVDeviceToString(vdvControl), '[', ']'), ': [', param, ']'")
+    send_command vdvControl, "param"
 }
 
 
-define_function BuildCommand(char cHeader[], char cCmd[]) {
-    if (length_array(cCmd)) {
-        SendCommand("cHeader, '-<', itoa(iID), '|', cCmd, '>'")
+define_function BuildCommand(char header[], char cmd[]) {
+    if (length_array(cmd)) {
+        SendCommand("header, '-<', itoa(id), '|', cmd, '>'")
     }
     else {
-        SendCommand("cHeader, '-<', itoa(iID), '>'")
+        SendCommand("header, '-<', itoa(id), '>'")
     }
 }
 
 
 define_function Register() {
-    iRegistered = true
+    registered = true
 }
 
 
 define_function Process() {
-    stack_var char cTemp[NAV_MAX_BUFFER]
+    stack_var char temp[NAV_MAX_BUFFER]
 
-    iSemaphore = true
+    semaphore = true
 
-    while (length_array(cRxBuffer) && NAVContains(cRxBuffer, '>')) {
-        cTemp = remove_string(cRxBuffer, "'>'", 1)
+    while (length_array(rxBuffer) && NAVContains(rxBuffer, '>')) {
+        temp = remove_string(rxBuffer, "'>'", 1)
 
-        if (length_array(cTemp)) {
-            NAVLog("'Parsing String From ', NAVStringSurroundWith(NAVDeviceToString(vdvControl), '[', ']'), ': [', cTemp, ']'")
+        if (length_array(temp)) {
+            NAVLog("'Parsing String From ', NAVStringSurroundWith(NAVDeviceToString(vdvControl), '[', ']'), ': [', temp, ']'")
 
-            if (NAVContains(cRxBuffer, cTemp)) { cRxBuffer = "''" }
+            if (NAVContains(rxBuffer, temp)) { rxBuffer = "''" }
 
             select {
-                active (NAVStartsWith(cTemp, 'REGISTER')): {
-                    iID = atoi(NAVGetStringBetween(cTemp, '<', '>'))
+                active (NAVStartsWith(temp, 'REGISTER')): {
+                    id = atoi(NAVGetStringBetween(temp, '<', '>'))
 
-                    if (iID) { BuildCommand('REGISTER', '') }
+                    if (id) { BuildCommand('REGISTER', '') }
 
-                    iIsInitialized = false
+                    isInitialized = false
 
-                    NAVLog("'EXTRON_DMP_REGISTER_REQUESTED<', itoa(iID), '>'")
-                    NAVLog("'EXTRON_DMP_REGISTER<', itoa(iID), '>'")
+                    NAVLog("'EXTRON_DMP_REGISTER_REQUESTED<', itoa(id), '>'")
+                    NAVLog("'EXTRON_DMP_REGISTER<', itoa(id), '>'")
                 }
-                active (NAVStartsWith(cTemp, 'INIT')): {
-                    iIsInitialized = true
+                active (NAVStartsWith(temp, 'INIT')): {
+                    isInitialized = true
                     BuildCommand('INIT_DONE', '')
-                    NAVLog("'EXTRON_DMP_INIT_REQUESTED<', itoa(iID), '>'")
-                    NAVLog("'EXTRON_DMP_INIT_DONE<', itoa(iID), '>'")
+                    NAVLog("'EXTRON_DMP_INIT_REQUESTED<', itoa(id), '>'")
+                    NAVLog("'EXTRON_DMP_INIT_DONE<', itoa(id), '>'")
                 }
-                active (NAVStartsWith(cTemp, 'RESPONSE_MSG')): {
-                    stack_var char cResponseMess[NAV_MAX_BUFFER]
-                    cResponseMess = NAVGetStringBetween(cTemp, '<', '>')
+                active (NAVStartsWith(temp, 'RESPONSE_MSG')): {
+                    stack_var char responseMess[NAV_MAX_BUFFER]
+                    responseMess = NAVGetStringBetween(temp, '<', '>')
                 }
             }
         }
     }
 
-    iSemaphore = false
+    semaphore = false
 }
 
 
@@ -158,7 +153,7 @@ define_function Process() {
 (*                STARTUP CODE GOES BELOW                  *)
 (***********************************************************)
 DEFINE_START {
-    create_buffer vdvControl,cRxBuffer
+    create_buffer vdvControl, rxBuffer
 }
 
 (***********************************************************)
@@ -168,7 +163,7 @@ DEFINE_EVENT
 
 data_event[vdvControl] {
     string: {
-        if (!iSemaphore) {
+        if (!semaphore) {
             Process()
         }
     }
@@ -180,17 +175,17 @@ data_event[vdvObject] {
 
     }
     command: {
-        stack_var char cCmdHeader[NAV_MAX_CHARS]
-        stack_var char cCmdParam[2][NAV_MAX_CHARS]
+        stack_var char cmdHeader[NAV_MAX_CHARS]
+        stack_var char cmdParam[2][NAV_MAX_CHARS]
 
         NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM, data.device, data.text))
 
-        cCmdHeader = DuetParseCmdHeader(data.text)
-        cCmdParam[1] = DuetParseCmdParam(data.text)
+        cmdHeader = DuetParseCmdHeader(data.text)
+        cmdParam[1] = DuetParseCmdParam(data.text)
 
-        switch (cCmdHeader) {
+        switch (cmdHeader) {
             case 'PRESET': {
-                BuildCommand('COMMAND_MSG', "cCmdParam[1], '.'")
+                BuildCommand('COMMAND_MSG', "cmdParam[1], '.'")
             }
         }
     }

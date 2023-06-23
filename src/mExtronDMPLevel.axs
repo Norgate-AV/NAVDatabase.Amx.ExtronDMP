@@ -62,29 +62,29 @@ DEFINE_TYPE
 (***********************************************************)
 DEFINE_VARIABLE
 
-volatile long ltDrive[] = { 500 }
+volatile long drive[] = { 500 }
 
-volatile char cAtt[NAV_MAX_CHARS]
-volatile char cIndex[4][NAV_MAX_CHARS]
+volatile char att[NAV_MAX_CHARS]
+volatile char index[4][NAV_MAX_CHARS]
 
-volatile char cLabel[NAV_MAX_CHARS]
+volatile char label[NAV_MAX_CHARS]
 
-volatile _NAVVolume uVolume
+volatile _NAVVolume volume
 
-volatile sinteger siMaxLevel = 2168
-volatile sinteger siMinLevel = 1048
+volatile sinteger maxLevel = 2168
+volatile sinteger minLevel = 1048
 
-volatile integer iIsInitialized
+volatile integer isInitialized
 
-volatile integer iRegistered
-volatile integer iRegisterReady
-volatile integer iRegisterRequested
+volatile integer registered
+volatile integer registerReady
+volatile integer registerRequested
 
-volatile integer iID
-volatile char cObjectTag[MAX_OBJECT_TAGS][NAV_MAX_CHARS]
+volatile integer id
+volatile char objectTag[MAX_OBJECT_TAGS][NAV_MAX_CHARS]
 
-volatile integer iSemaphore
-volatile char cRxBuffer[NAV_MAX_BUFFER]
+volatile integer semaphore
+volatile char rxBuffer[NAV_MAX_BUFFER]
 
 
 (***********************************************************)
@@ -103,104 +103,104 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (* EXAMPLE: DEFINE_FUNCTION <RETURN_TYPE> <NAME> (<PARAMETERS>) *)
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
 
-define_function SendCommand(char cParam[]) {
-    NAVLog("'Command to ', NAVStringSurroundWith(NAVDeviceToString(vdvControl), '[', ']'), ': [', cParam, ']'")
-    send_command vdvControl, "cParam"
+define_function SendCommand(char param[]) {
+    NAVLog("'Command to ', NAVStringSurroundWith(NAVDeviceToString(vdvControl), '[', ']'), ': [', param, ']'")
+    send_command vdvControl, "param"
 }
 
 
-define_function BuildCommand(char cHeader[], char cCmd[]) {
-    if (length_array(cCmd)) {
-        SendCommand("cHeader, '-<', itoa(iID), '|', cCmd, '>'")
+define_function BuildCommand(char header[], char cmd[]) {
+    if (length_array(cmd)) {
+        SendCommand("header, '-<', itoa(id), '|', cmd, '>'")
     }
     else {
-        SendCommand("cHeader, '-<', itoa(iID), '>'")
+        SendCommand("header, '-<', itoa(id), '>'")
     }
 }
 
 
 define_function Register() {
-    iRegistered = true
+    registered = true
 
-    switch (cAtt) {
+    switch (att) {
         case 'G': {	//Standard Level
-            cObjectTag[1] = "'Ds', cAtt, format('%02d' ,atoi(cIndex[1])), '*'"
-            cObjectTag[2] = "'Ds', cAtt, format('%01d', atoi(cIndex[1])), '*'"
-            cObjectTag[3] = ''
-            cObjectTag[4] = ''
+            objectTag[1] = "'Ds', att, format('%02d' ,atoi(index[1])), '*'"
+            objectTag[2] = "'Ds', att, format('%01d', atoi(index[1])), '*'"
+            objectTag[3] = ''
+            objectTag[4] = ''
         }
         case 'D': { 	//Group Level
-            cObjectTag[1] = "'Grpm', cAtt, format('%02d', atoi(cIndex[1])), '*'"
-            cObjectTag[2] = "'GrpmL', format('%02d', atoi(cIndex[1])), '*'"
-            cObjectTag[3] = "'Grpm', cAtt, format('%01d', atoi(cIndex[1])), '*'"
-            cObjectTag[4] = "'GrpmL', format('%01d', atoi(cIndex[1])), '*'"
+            objectTag[1] = "'Grpm', att, format('%02d', atoi(index[1])), '*'"
+            objectTag[2] = "'GrpmL', format('%02d', atoi(index[1])), '*'"
+            objectTag[3] = "'Grpm', att, format('%01d', atoi(index[1])), '*'"
+            objectTag[4] = "'GrpmL', format('%01d', atoi(index[1])), '*'"
         }
     }
 
-    if (iID) { BuildCommand('REGISTER', "cObjectTag[1], ',', cObjectTag[2], ',', cObjectTag[3], ',', cObjectTag[4]") }
-    NAVLog("'EXTRON_DMP_REGISTER<', itoa(iID), '>'")
+    if (id) { BuildCommand('REGISTER', "objectTag[1], ',', objectTag[2], ',', objectTag[3], ',', objectTag[4]") }
+    NAVLog("'EXTRON_DMP_REGISTER<', itoa(id), '>'")
 }
 
 
 define_function Process() {
-    stack_var char cTemp[NAV_MAX_BUFFER]
+    stack_var char temp[NAV_MAX_BUFFER]
 
-    iSemaphore = true
+    semaphore = true
 
-    while (length_array(cRxBuffer) && NAVContains(cRxBuffer, '>')) {
-        cTemp = remove_string(cRxBuffer, "'>'", 1)
+    while (length_array(rxBuffer) && NAVContains(rxBuffer, '>')) {
+        temp = remove_string(rxBuffer, "'>'", 1)
 
-        if (length_array(cTemp)) {
-            NAVLog("'Parsing String From ', NAVStringSurroundWith(NAVDeviceToString(vdvControl), '[', ']'), ': [', cTemp, ']'")
+        if (length_array(temp)) {
+            NAVLog("'Parsing String From ', NAVStringSurroundWith(NAVDeviceToString(vdvControl), '[', ']'), ': [', temp, ']'")
 
-            if (NAVContains(cRxBuffer, cTemp)) { cRxBuffer = "''" }
+            if (NAVContains(rxBuffer, temp)) { rxBuffer = "''" }
 
             select {
-                active (NAVStartsWith(cTemp, 'REGISTER')): {
-                    iID = atoi(NAVGetStringBetween(cTemp, '<', '>'))
-                    iRegisterRequested = true
+                active (NAVStartsWith(temp, 'REGISTER')): {
+                    id = atoi(NAVGetStringBetween(temp, '<', '>'))
+                    registerRequested = true
 
-                    if (iRegisterReady) {
+                    if (registerReady) {
                         Register()
                     }
 
-                    NAVLog("'EXTRON_DMP_REGISTER_REQUESTED<', itoa(iID), '>'")
+                    NAVLog("'EXTRON_DMP_REGISTER_REQUESTED<', itoa(id), '>'")
                 }
-                active (NAVStartsWith(cTemp, 'INIT')): {
-                    iIsInitialized = false
+                active (NAVStartsWith(temp, 'INIT')): {
+                    isInitialized = false
                     GetInitialized()
-                    NAVLog("'EXTRON_DMP_INIT_REQUESTED<', itoa(iID), '>'")
+                    NAVLog("'EXTRON_DMP_INIT_REQUESTED<', itoa(id), '>'")
                 }
-                active (NAVStartsWith(cTemp, 'RESPONSE_MSG')): {
-                    stack_var char cResponseMess[NAV_MAX_BUFFER]
-                    NAVLog("'Response message: ', cTemp")
+                active (NAVStartsWith(temp, 'RESPONSE_MSG')): {
+                    stack_var char responseMess[NAV_MAX_BUFFER]
+                    NAVLog("'Response message: ', temp")
 
-                    cResponseMess = NAVGetStringBetween(cTemp, '<', '>')
+                    responseMess = NAVGetStringBetween(temp, '<', '>')
 
-                    switch (cAtt) {
+                    switch (att) {
                         case 'G': {
                             select {
-                                active (NAVContains(cResponseMess, cObjectTag[1])): {
-                                    GetLevel(cResponseMess, cObjectTag[1])
+                                active (NAVContains(responseMess, objectTag[1])): {
+                                    GetLevel(responseMess, objectTag[1])
                                 }
-                                active (NAVContains(cResponseMess, cObjectTag[2])): {
-                                    GetLevel(cResponseMess, cObjectTag[2])
+                                active (NAVContains(responseMess, objectTag[2])): {
+                                    GetLevel(responseMess, objectTag[2])
                                 }
                             }
                         }
                         case 'D': {
                             select {
-                                active (NAVContains(cResponseMess, cObjectTag[1])): {
-                                    GetLevel(cResponseMess, cObjectTag[1])
+                                active (NAVContains(responseMess, objectTag[1])): {
+                                    GetLevel(responseMess, objectTag[1])
                                 }
-                                active (NAVContains(cResponseMess, cObjectTag[2])): {
-                                    GetLimits(cResponseMess, cObjectTag[2])
+                                active (NAVContains(responseMess, objectTag[2])): {
+                                    GetLimits(responseMess, objectTag[2])
                                 }
-                                active (NAVContains(cResponseMess, cObjectTag[3])): {
-                                    GetLevel(cResponseMess, cObjectTag[3])
+                                active (NAVContains(responseMess, objectTag[3])): {
+                                    GetLevel(responseMess, objectTag[3])
                                 }
-                                active (NAVContains(cResponseMess, cObjectTag[4])): {
-                                    GetLimits(cResponseMess, cObjectTag[4])
+                                active (NAVContains(responseMess, objectTag[4])): {
+                                    GetLimits(responseMess, objectTag[4])
                                 }
                             }
                         }
@@ -210,77 +210,77 @@ define_function Process() {
         }
     }
 
-    iSemaphore = false
+    semaphore = false
 }
 
 
-define_function GetLevel(char cResponseMess[], char cTag[]) {
-    remove_string(cResponseMess, "cTag", 1)
-    uVolume.Level.Actual = atoi(cResponseMess)
-    send_level vdvObject, 1, NAVScaleValue((uVolume.Level.Actual - siMinLevel), (siMaxLevel - siMinLevel), 255, 0)
+define_function GetLevel(char responseMess[], char tag[]) {
+    remove_string(responseMess, "tag", 1)
+    volume.Level.Actual = atoi(responseMess)
+    send_level vdvObject, 1, NAVScaleValue((volume.Level.Actual - minLevel), (maxLevel - minLevel), 255, 0)
 
-    if (!iIsInitialized) {
-        iIsInitialized = true
+    if (!isInitialized) {
+        isInitialized = true
         BuildCommand('INIT_DONE', '')
-        NAVLog("'EXTRON_DMP_INIT_DONE<', itoa(iID), '>'")
+        NAVLog("'EXTRON_DMP_INIT_DONE<', itoa(id), '>'")
     }
 }
 
 
-define_function GetLimits(char cResponseMess[], char cTag[]) {
-    NAVLog("'EXTRON_DMP_FOUND_SOFT_LIMIT_RESPONSE<', itoa(iID), '>'")
-    remove_string(cResponseMess, "cTag", 1)
+define_function GetLimits(char responseMess[], char tag[]) {
+    NAVLog("'EXTRON_DMP_FOUND_SOFT_LIMIT_RESPONSE<', itoa(id), '>'")
+    remove_string(responseMess, "tag", 1)
 
-    siMaxLevel = atoi(NAVStripCharsFromRight(remove_string(cResponseMess, '*', 1), 1))
-    NAVLog("'EXTRON_DMP_MAX_LEVEL<', itoa(siMaxLevel), '>'")
-    siMinLevel = atoi(cResponseMess)
-    NAVLog("'EXTRON_DMP_MIN_LEVEL<', itoa(siMinLevel), '>'")
+    maxLevel = atoi(NAVStripCharsFromRight(remove_string(responseMess, '*', 1), 1))
+    NAVLog("'EXTRON_DMP_MAX_LEVEL<', itoa(maxLevel), '>'")
+    minLevel = atoi(responseMess)
+    NAVLog("'EXTRON_DMP_MIN_LEVEL<', itoa(minLevel), '>'")
 
-    send_level vdvObject, 1, NAVScaleValue((uVolume.Level.Actual - siMinLevel), (siMaxLevel - siMinLevel), 255, 0)
+    send_level vdvObject, 1, NAVScaleValue((volume.Level.Actual - minLevel), (maxLevel - minLevel), 255, 0)
 }
 
 
 define_function GetInitialized() {
-    switch (cAtt) {
+    switch (att) {
         case 'G': {	//Standard Level
-            BuildCommand('POLL_MSG', BuildString(cAtt, cIndex[1], ''))
+            BuildCommand('POLL_MSG', BuildString(att, index[1], ''))
         }
         case 'D': {	//Group Level
-            BuildCommand('POLL_MSG', BuildString('L', cIndex[1], ''))	//Get Caps First
-            BuildCommand('POLL_MSG', BuildString(cAtt, cIndex[1], ''))
+            BuildCommand('POLL_MSG', BuildString('L', index[1], ''))	//Get Caps First
+            BuildCommand('POLL_MSG', BuildString(att, index[1], ''))
         }
     }
 }
 
 
 define_function Poll() {
-    switch (cAtt) {
+    switch (att) {
         case 'G': {	// Standard Level
-            BuildCommand('POLL_MSG', BuildString(cAtt, cIndex[1], ''))
+            BuildCommand('POLL_MSG', BuildString(att, index[1], ''))
         }
         case 'D': {	// Group Level
-            BuildCommand('POLL_MSG', BuildString('L', cIndex[1], ''))	//Get Caps First
-            BuildCommand('POLL_MSG', BuildString(cAtt, cIndex[1], ''))
+            BuildCommand('POLL_MSG', BuildString('L', index[1], ''))	//Get Caps First
+            BuildCommand('POLL_MSG', BuildString(att, index[1], ''))
         }
     }
 }
 
 
-define_function char[NAV_MAX_BUFFER] BuildString(char cAtt[], char cIndex1[], char cVal[]) {
-    stack_var char cTemp[NAV_MAX_BUFFER]
+define_function char[NAV_MAX_BUFFER] BuildString(char att[], char index1[], char val[]) {
+    stack_var char temp[NAV_MAX_BUFFER]
 
-    if (length_array(cAtt)) { cTemp = "NAV_ESC, cAtt" }
-    if (length_array(cIndex1)) { cTemp = "cTemp, format('%01d', atoi(cIndex1))" }
-    if (length_array(cVal)) { cTemp = "cTemp, '*', cVal" }
+    if (length_array(att)) { temp = "NAV_ESC, att" }
+    if (length_array(index1)) { temp = "temp, format('%01d', atoi(index1))" }
+    if (length_array(val)) { temp = "temp, '*', val" }
 
-    switch (cAtt) {
-        case 'G': { cTemp = "cTemp, 'AU'" }
+    switch (att) {
+        case 'G': { temp = "temp, 'AU'" }
         case 'L':
-        case 'D': { cTemp = "cTemp, 'GRPM'" }
+        case 'D': { temp = "temp, 'GRPM'" }
     }
 
-    cTemp = "cTemp, NAV_CR"
-    return cTemp
+    temp = "temp, NAV_CR"
+    return temp
 }
 
 
@@ -288,7 +288,7 @@ define_function char[NAV_MAX_BUFFER] BuildString(char cAtt[], char cIndex1[], ch
 (*                STARTUP CODE GOES BELOW                  *)
 (***********************************************************)
 DEFINE_START {
-    create_buffer vdvControl,cRxBuffer
+    create_buffer vdvControl, rxBuffer
 }
 
 (***********************************************************)
@@ -298,7 +298,7 @@ DEFINE_EVENT
 
 data_event[vdvControl] {
     string: {
-        if (!iSemaphore) {
+        if (!semaphore) {
             Process()
         }
     }
@@ -310,106 +310,106 @@ data_event[vdvObject] {
 
     }
     command: {
-        stack_var char cCmdHeader[NAV_MAX_CHARS]
-        stack_var char cCmdParam[2][NAV_MAX_CHARS]
+        stack_var char cmdHeader[NAV_MAX_CHARS]
+        stack_var char cmdParam[2][NAV_MAX_CHARS]
 
         NAVLog("'Command from ', NAVStringSurroundWith(NAVDeviceToString(data.device), '[', ']'), ': [', data.text, ']'")
 
-        cCmdHeader = DuetParseCmdHeader(data.text)
-        cCmdParam[1] = DuetParseCmdParam(data.text)
-        cCmdParam[2] = DuetParseCmdParam(data.text)
+        cmdHeader = DuetParseCmdHeader(data.text)
+        cmdParam[1] = DuetParseCmdParam(data.text)
+        cmdParam[2] = DuetParseCmdParam(data.text)
 
-        switch (cCmdHeader) {
+        switch (cmdHeader) {
             case 'PROPERTY': {
-                switch (cCmdParam[1]) {
+                switch (cmdParam[1]) {
                     case 'ATTRIBUTE': {
-                        cAtt = cCmdParam[2]
+                        att = cmdParam[2]
                     }
                     case 'INDEX_1': {
-                        cIndex[1] = cCmdParam[2]
+                        index[1] = cmdParam[2]
                     }
                     case 'INDEX_2': {
-                        cIndex[2] = cCmdParam[2]
+                        index[2] = cmdParam[2]
                     }
                     case 'INDEX_3': {
-                        cIndex[3] = cCmdParam[2]
+                        index[3] = cmdParam[2]
                     }
                     case 'INDEX_4': {
-                        cIndex[4] = cCmdParam[2]
+                        index[4] = cmdParam[2]
                     }
                     case 'MAX_LEVEL': {
-                        if (length_array(cCmdParam[2])) {
-                            siMaxLevel = atoi(cCmdParam[2]) * 10
+                        if (length_array(cmdParam[2])) {
+                            maxLevel = atoi(cmdParam[2]) * 10
                         }
                     }
                     case 'MIN_LEVEL': {
-                        if (length_array(cCmdParam[2])) {
-                            siMinLevel = atoi(cCmdParam[2]) * 10
+                        if (length_array(cmdParam[2])) {
+                            minLevel = atoi(cmdParam[2]) * 10
                         }
                     }
                     case 'LABEL': {
-                        cLabel = cCmdParam[2]
+                        label = cmdParam[2]
                     }
                 }
             }
             case 'REGISTER': {
-                iRegisterReady = true
-                if (iRegisterRequested) {
+                registerReady = true
+                if (registerRequested) {
                     Register()
                 }
             }
             case '?LABEL': {
-                if (length_array(cLabel)) {
-                    NAVCommand(data.device, "'PROPERTY-LABEL,', cLabel")
+                if (length_array(label)) {
+                    NAVCommand(data.device, "'PROPERTY-LABEL,', label")
                 }
             }
             case 'INIT': {
                 GetInitialized()
             }
             case 'VOLUME': {
-                switch (cCmdParam[1]) {
+                switch (cmdParam[1]) {
                     case 'QUARTER': {
-                        if (iIsInitialized) {
-                            BuildCommand('COMMAND_MSG', BuildString(cAtt, cIndex[1], itoa(NAVQuarterPointOfRange(siMaxLevel, siMinLevel))))
+                        if (isInitialized) {
+                            BuildCommand('COMMAND_MSG', BuildString(att, index[1], itoa(NAVQuarterPointOfRange(maxLevel, minLevel))))
                         }
                     }
                     case 'HALF': {
-                        if (iIsInitialized) {
-                            BuildCommand('COMMAND_MSG', BuildString(cAtt, cIndex[1], itoa(NAVHalfPointOfRange(siMaxLevel, siMinLevel))))
+                        if (isInitialized) {
+                            BuildCommand('COMMAND_MSG', BuildString(att, index[1], itoa(NAVHalfPointOfRange(maxLevel, minLevel))))
                         }
                     }
                     case 'THREE_QUARTERS': {
-                        if (iIsInitialized) {
-                            BuildCommand('COMMAND_MSG' ,BuildString(cAtt, cIndex[1], itoa(NAVThreeQuarterPointOfRange(siMaxLevel, siMinLevel))))
+                        if (isInitialized) {
+                            BuildCommand('COMMAND_MSG' ,BuildString(att, index[1], itoa(NAVThreeQuarterPointOfRange(maxLevel, minLevel))))
                         }
                     }
                     case 'FULL': {
-                        if (iIsInitialized) {
-                            BuildCommand('COMMAND_MSG', BuildString(cAtt, cIndex[1], itoa(siMaxLevel)))
+                        if (isInitialized) {
+                            BuildCommand('COMMAND_MSG', BuildString(att, index[1], itoa(maxLevel)))
                         }
                     }
                     case 'INC': {
-                        if (uVolume.Level.Actual < siMaxLevel && iIsInitialized) {
-                            BuildCommand('COMMAND_MSG', BuildString(cAtt, cIndex[1], itoa(uVolume.Level.Actual + 10)))
+                        if (volume.Level.Actual < maxLevel && isInitialized) {
+                            BuildCommand('COMMAND_MSG', BuildString(att, index[1], itoa(volume.Level.Actual + 10)))
                         }
                     }
                     case 'DEC': {
-                        if (uVolume.Level.Actual > siMinLevel && iIsInitialized) {
-                            BuildCommand('COMMAND_MSG', BuildString(cAtt, cIndex[1], itoa(uVolume.Level.Actual - 10)))
+                        if (volume.Level.Actual > minLevel && isInitialized) {
+                            BuildCommand('COMMAND_MSG', BuildString(att, index[1], itoa(volume.Level.Actual - 10)))
                         }
                     }
                     case 'ABS': {
-                        if ((atoi(cCmdParam[2]) >= siMinLevel) && (atoi(cCmdParam[2]) <= siMaxLevel) && iIsInitialized) {
-                            BuildCommand('COMMAND_MSG', BuildString(cAtt, cIndex[1], cCmdParam[2]))
+                        if ((atoi(cmdParam[2]) >= minLevel) && (atoi(cmdParam[2]) <= maxLevel) && isInitialized) {
+                            BuildCommand('COMMAND_MSG', BuildString(att, index[1], cmdParam[2]))
                         }
                     }
                     default: {
-                        stack_var sinteger siLevel
+                        stack_var sinteger level
 
-                        siLevel = NAVScaleValue(atoi(cCmdParam[1]), 255,(siMaxLevel - siMinLevel), siMinLevel)
+                        level = NAVScaleValue(atoi(cmdParam[1]), 255,(maxLevel - minLevel), minLevel)
 
-                        if ((siLevel >= siMinLevel) && (siLevel <= siMaxLevel) && iIsInitialized) {
-                            BuildCommand('COMMAND_MSG', BuildString(cAtt, cIndex[1], itoa(siLevel)))
+                        if ((level >= minLevel) && (level <= maxLevel) && isInitialized) {
+                            BuildCommand('COMMAND_MSG', BuildString(att, index[1], itoa(level)))
                         }
                     }
                 }
@@ -423,13 +423,13 @@ channel_event[vdvObject, 0] {
     on: {
         switch (channel.channel) {
             case VOL_UP: {
-                if (iIsInitialized) {
-                    timeline_create(TL_DRIVE, ltDrive, length_array(ltDrive), TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
+                if (isInitialized) {
+                    timeline_create(TL_DRIVE, drive, length_array(drive), TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
                 }
             }
             case VOL_DN: {
-                if (iIsInitialized) {
-                    timeline_create(TL_DRIVE, ltDrive, length_array(ltDrive), TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
+                if (isInitialized) {
+                    timeline_create(TL_DRIVE, drive, length_array(drive), TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
                 }
             }
         }
@@ -443,19 +443,19 @@ channel_event[vdvObject, 0] {
 timeline_event[TL_DRIVE] {
     select {
         active ([vdvObject, VOL_UP]): {
-            if (NAVContains(cAtt, 'G')) {
-                BuildCommand('COMMAND_MSG', BuildString(cAtt, cIndex[1], itoa(uVolume.Level.Actual + 10)))
+            if (NAVContains(att, 'G')) {
+                BuildCommand('COMMAND_MSG', BuildString(att, index[1], itoa(volume.Level.Actual + 10)))
             }
             else {
-                BuildCommand('COMMAND_MSG', BuildString(cAtt, cIndex[1], '10+'))
+                BuildCommand('COMMAND_MSG', BuildString(att, index[1], '10+'))
             }
         }
         active ([vdvObject, VOL_DN]): {
-            if (NAVContains(cAtt, 'G')) {
-                BuildCommand('COMMAND_MSG', BuildString(cAtt, cIndex[1], itoa(uVolume.Level.Actual - 10)))
+            if (NAVContains(att, 'G')) {
+                BuildCommand('COMMAND_MSG', BuildString(att, index[1], itoa(volume.Level.Actual - 10)))
             }
             else {
-                BuildCommand('COMMAND_MSG', BuildString(cAtt, cIndex[1], '10-'))
+                BuildCommand('COMMAND_MSG', BuildString(att, index[1], '10-'))
             }
         }
     }

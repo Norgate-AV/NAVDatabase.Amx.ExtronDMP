@@ -64,7 +64,7 @@ DEFINE_TYPE
 (***********************************************************)
 DEFINE_VARIABLE
 
-volatile integer iLocked
+volatile integer locked
 
 
 (***********************************************************)
@@ -104,13 +104,13 @@ button_event[dvTP, 0] {
                 to[vdvStateObject, button.input.channel]
             }
             case LOCK_TOGGLE: {
-                iLocked = !iLocked
+                locked = !locked
             }
             case LOCK_ON: {
-                iLocked = true
+                locked = true
             }
             case LOCK_OFF: {
-                iLocked = false
+                locked = false
             }
         }
     }
@@ -119,9 +119,9 @@ button_event[dvTP, 0] {
 
 timeline_event[TL_NAV_FEEDBACK] {
     [dvTP, VOL_MUTE]	= ([vdvStateObject, VOL_MUTE_FB])
-    [dvTP, LOCK_TOGGLE]	= (iLocked)
-    [dvTP, LOCK_ON]	= (iLocked)
-    [dvTP, LOCK_OFF]	= (!iLocked)
+    [dvTP, LOCK_TOGGLE]	= (locked)
+    [dvTP, LOCK_ON]	= (locked)
+    [dvTP, LOCK_OFF]	= (!locked)
 }
 
 

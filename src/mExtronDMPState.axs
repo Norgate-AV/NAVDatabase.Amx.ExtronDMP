@@ -48,9 +48,6 @@ DEFINE_DEVICE
 (***********************************************************)
 DEFINE_CONSTANT
 
-constant long TL_DRIVE = 1
-
-
 (***********************************************************)
 (*              DATA TYPE DEFINITIONS GO BELOW             *)
 (***********************************************************)
@@ -61,25 +58,23 @@ DEFINE_TYPE
 (***********************************************************)
 DEFINE_VARIABLE
 
-volatile long ltDrive[] = { 200 }
+volatile char att[NAV_MAX_CHARS]
+volatile char index[4][NAV_MAX_CHARS]
 
-volatile char cAtt[NAV_MAX_CHARS]
-volatile char cIndex[4][NAV_MAX_CHARS]
+volatile _NAVVolume volume
 
-volatile _NAVVolume uVolume
+volatile integer isInitialized
 
-volatile integer iIsInitialized
+volatile integer registered
+volatile integer registerReady
+volatile integer registerRequested
 
-volatile integer iRegistered
-volatile integer iRegisterReady
-volatile integer iRegisterRequested
+volatile integer id
 
-volatile integer iID
+volatile integer semaphore
+volatile char rxBuffer[NAV_MAX_BUFFER]
 
-volatile integer iSemaphore
-volatile char cRxBuffer[NAV_MAX_BUFFER]
-
-volatile char cObjectTag[MAX_OBJECT_TAGS][NAV_MAX_CHARS]
+volatile char objectTag[MAX_OBJECT_TAGS][NAV_MAX_CHARS]
 
 
 (***********************************************************)
@@ -98,81 +93,81 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (* EXAMPLE: DEFINE_FUNCTION <RETURN_TYPE> <NAME> (<PARAMETERS>) *)
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
 
-define_function SendCommand(char cParam[]) {
-    NAVLog("'Command to ', NAVStringSurroundWith(NAVDeviceToString(vdvControl), '[', ']'), ': [', cParam, ']'")
-    send_command vdvControl, "cParam"
+define_function SendCommand(char param[]) {
+    NAVLog("'Command to ', NAVStringSurroundWith(NAVDeviceToString(vdvControl), '[', ']'), ': [', param, ']'")
+    send_command vdvControl, "param"
 }
 
 
-define_function BuildCommand(char cHeader[], char cCmd[]) {
-    if (length_array(cCmd)) {
-        SendCommand("cHeader, '-<',itoa(iID), '|', cCmd, '>'")
+define_function BuildCommand(char header[], char cmd[]) {
+    if (length_array(cmd)) {
+        SendCommand("header, '-<',itoa(id), '|', cmd, '>'")
     }
     else {
-        SendCommand("cHeader, '-<',itoa(iID), '>'")
+        SendCommand("header, '-<',itoa(id), '>'")
     }
 }
 
 
 define_function Register() {
-    iRegistered = true
+    registered = true
 
-    switch (cAtt) {
+    switch (att) {
         case 'M': {	//Standard Mute
-            cObjectTag[1] = "'Ds', cAtt, format('%02d', atoi(cIndex[1])), '*'"
-            cObjectTag[2] = "'Ds',cAtt, format('%01d', atoi(cIndex[1])), '*'"
+            objectTag[1] = "'Ds', att, format('%02d', atoi(index[1])), '*'"
+            objectTag[2] = "'Ds',att, format('%01d', atoi(index[1])), '*'"
         }
         case 'D': {	//Group Mute
-            cObjectTag[1] = "'Grpm', cAtt, format('%02d', atoi(cIndex[1])), '*'"
-            cObjectTag[2] = "'Grpm', cAtt, format('%01d', atoi(cIndex[1])), '*'"
+            objectTag[1] = "'Grpm', att, format('%02d', atoi(index[1])), '*'"
+            objectTag[2] = "'Grpm', att, format('%01d', atoi(index[1])), '*'"
         }
     }
 
-    if (iID) { BuildCommand('REGISTER', "cObjectTag[1], ',', cObjectTag[2]") }
-    NAVLog("'EXTRON_DMP_REGISTER<', itoa(iID), '>'")
+    if (id) { BuildCommand('REGISTER', "objectTag[1], ',', objectTag[2]") }
+    NAVLog("'EXTRON_DMP_REGISTER<', itoa(id), '>'")
 }
 
 
 define_function Process() {
-    stack_var char cTemp[NAV_MAX_BUFFER]
+    stack_var char temp[NAV_MAX_BUFFER]
 
-    iSemaphore = true
+    semaphore = true
 
-    while (length_array(cRxBuffer) && NAVContains(cRxBuffer, '>')) {
-        cTemp = remove_string(cRxBuffer, "'>'", 1)
+    while (length_array(rxBuffer) && NAVContains(rxBuffer, '>')) {
+        temp = remove_string(rxBuffer, "'>'", 1)
 
-        if (length_array(cTemp)) {
-            NAVLog("'Parsing String From ', NAVStringSurroundWith(NAVDeviceToString(vdvControl), '[', ']'), ': [', cTemp, ']'")
+        if (length_array(temp)) {
+            NAVLog("'Parsing String From ', NAVStringSurroundWith(NAVDeviceToString(vdvControl), '[', ']'), ': [', temp, ']'")
 
-            if (NAVContains(cRxBuffer, cTemp)) { cRxBuffer = "''" }
+            if (NAVContains(rxBuffer, temp)) { rxBuffer = "''" }
 
             select {
-                active (NAVStartsWith(cTemp, 'REGISTER')): {
-                    iID = atoi(NAVGetStringBetween(cTemp, '<', '>'))
+                active (NAVStartsWith(temp, 'REGISTER')): {
+                    id = atoi(NAVGetStringBetween(temp, '<', '>'))
 
-                    iRegisterRequested = true
-                    if (iRegisterReady) {
+                    registerRequested = true
+                    if (registerReady) {
                         Register()
                     }
 
-                    NAVLog("'EXTRON_DMP_REGISTER_REQUESTED<', itoa(iID), '>'")
+                    NAVLog("'EXTRON_DMP_REGISTER_REQUESTED<', itoa(id), '>'")
                 }
-                active (NAVStartsWith(cTemp, 'INIT')): {
-                    iIsInitialized = false
+                active (NAVStartsWith(temp, 'INIT')): {
+                    isInitialized = false
                     GetInitialized()
-                    NAVLog("'EXTRON_DMP_INIT_REQUESTED<', itoa(iID), '>'")
+                    NAVLog("'EXTRON_DMP_INIT_REQUESTED<', itoa(id), '>'")
                 }
-                active (NAVStartsWith(cTemp, 'RESPONSE_MSG')): {
-                    stack_var char cResponseMess[NAV_MAX_BUFFER]
+                active (NAVStartsWith(temp, 'RESPONSE_MSG')): {
+                    stack_var char responseMess[NAV_MAX_BUFFER]
 
-                    cResponseMess = NAVGetStringBetween(cTemp, '<', '>')
+                    responseMess = NAVGetStringBetween(temp, '<', '>')
 
                     select {
-                        active (NAVContains(cResponseMess, cObjectTag[1])): {
-                            GetState(cResponseMess, cObjectTag[1])
+                        active (NAVContains(responseMess, objectTag[1])): {
+                            GetState(responseMess, objectTag[1])
                         }
-                        active (NAVContains(cResponseMess, cObjectTag[2])): {
-                            GetState(cResponseMess, cObjectTag[2])
+                        active (NAVContains(responseMess, objectTag[2])): {
+                            GetState(responseMess, objectTag[2])
                         }
                     }
                 }
@@ -180,56 +175,56 @@ define_function Process() {
         }
     }
 
-    iSemaphore = false
+    semaphore = false
 }
 
 
 define_function GetInitialized() {
-    BuildCommand('POLL_MSG', BuildString(cAtt, cIndex[1], ''))
+    BuildCommand('POLL_MSG', BuildString(att, index[1], ''))
 }
 
 
-define_function GetState(char cResponseMess[], char cTag[]) {
-    remove_string(cResponseMess, "cTag", 1)
-    NAVLog("'DMP_STATE_RESPONSE_MESSSAGE<', cResponseMess, '>'")
+define_function GetState(char responseMess[], char tag[]) {
+    remove_string(responseMess, "tag", 1)
+    NAVLog("'DMP_STATE_RESPONSE_MESSSAGE<', responseMess, '>'")
 
-    if (NAVStartsWith(cIndex[1], '2') && cAtt == 'M') {	//XP Mute
-        NAVLog("'DMP_STATE_OBJECT_IS_XP<', itoa(iID), '>'")
-        uVolume.Mute.Actual = !atoi(cResponseMess)
+    if (NAVStartsWith(index[1], '2') && att == 'M') {	//XP Mute
+        NAVLog("'DMP_STATE_OBJECT_IS_XP<', itoa(id), '>'")
+        volume.Mute.Actual = !atoi(responseMess)
     }
     else {
-        uVolume.Mute.Actual = atoi(cResponseMess)
+        volume.Mute.Actual = atoi(responseMess)
     }
 
-    NAVLog("'DMP_STATE_ACTUAL_MUTE<', itoa(uVolume.Mute.Actual), '>'")
+    NAVLog("'DMP_STATE_ACTUAL_MUTE<', itoa(volume.Mute.Actual), '>'")
 
-    if (!iIsInitialized) {
-        iIsInitialized = true
+    if (!isInitialized) {
+        isInitialized = true
         BuildCommand('INIT_DONE', '')
-        NAVLog("'EXTRON_DMP_INIT_DONE<', itoa(iID), '>'")
+        NAVLog("'EXTRON_DMP_INIT_DONE<', itoa(id), '>'")
     }
 }
 
 
 define_function Poll() {
-    BuildCommand('POLL_MSG', BuildString(cAtt, cIndex[1], ''))
+    BuildCommand('POLL_MSG', BuildString(att, index[1], ''))
 }
 
 
-define_function char[NAV_MAX_BUFFER] BuildString(char cAtt[], char cIndex1[], char cVal[]) {
-    stack_var char cTemp[NAV_MAX_BUFFER]
+define_function char[NAV_MAX_BUFFER] BuildString(char att[], char index1[], char val[]) {
+    stack_var char temp[NAV_MAX_BUFFER]
 
-    if (length_array(cAtt)) { cTemp = "NAV_ESC, cAtt" }
-    if (length_array(cIndex1)) { cTemp = "cTemp, format('%01d', atoi(cIndex1))" }
-    if (length_array(cVal)) { cTemp = "cTemp, '*', cVal" }
+    if (length_array(att)) { temp = "NAV_ESC, att" }
+    if (length_array(index1)) { temp = "temp, format('%01d', atoi(index1))" }
+    if (length_array(val)) { temp = "temp, '*', val" }
 
-    switch (cAtt) {
-        case 'M': { cTemp = "cTemp, 'AU'" }
-        case 'D': { cTemp = "cTemp, 'GRPM'" }
+    switch (att) {
+        case 'M': { temp = "temp, 'AU'" }
+        case 'D': { temp = "temp, 'GRPM'" }
     }
 
-    cTemp = "cTemp, NAV_CR"
-    return cTemp
+    temp = "temp, NAV_CR"
+    return temp
 }
 
 
@@ -237,7 +232,7 @@ define_function char[NAV_MAX_BUFFER] BuildString(char cAtt[], char cIndex1[], ch
 (*                STARTUP CODE GOES BELOW                  *)
 (***********************************************************)
 DEFINE_START {
-    create_buffer vdvControl,cRxBuffer
+    create_buffer vdvControl,rxBuffer
 }
 
 (***********************************************************)
@@ -247,7 +242,7 @@ DEFINE_EVENT
 
 data_event[vdvControl] {
     string: {
-        if (!iSemaphore) {
+        if (!semaphore) {
             Process()
         }
     }
@@ -259,38 +254,38 @@ data_event[vdvObject] {
 
     }
     command: {
-        stack_var char cCmdHeader[NAV_MAX_CHARS]
-        stack_var char cCmdParam[2][NAV_MAX_CHARS]
+        stack_var char cmdHeader[NAV_MAX_CHARS]
+        stack_var char cmdParam[2][NAV_MAX_CHARS]
 
         NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM, data.device, data.text))
 
-        cCmdHeader = DuetParseCmdHeader(data.text)
-        cCmdParam[1] = DuetParseCmdParam(data.text)
-        cCmdParam[2] = DuetParseCmdParam(data.text)
+        cmdHeader = DuetParseCmdHeader(data.text)
+        cmdParam[1] = DuetParseCmdParam(data.text)
+        cmdParam[2] = DuetParseCmdParam(data.text)
 
-        switch (cCmdHeader) {
+        switch (cmdHeader) {
             case 'PROPERTY': {
-                switch (cCmdParam[1]) {
+                switch (cmdParam[1]) {
                     case 'ATTRIBUTE': {
-                        cAtt = cCmdParam[2]
+                        att = cmdParam[2]
                     }
                     case 'INDEX_1': {
-                        cIndex[1] = cCmdParam[2]
+                        index[1] = cmdParam[2]
                     }
                     case 'INDEX_2': {
-                        cIndex[2] = cCmdParam[2]
+                        index[2] = cmdParam[2]
                     }
                     case 'INDEX_3': {
-                        cIndex[3] = cCmdParam[2]
+                        index[3] = cmdParam[2]
                     }
                     case 'INDEX_4': {
-                        cIndex[4] = cCmdParam[2]
+                        index[4] = cmdParam[2]
                     }
                 }
             }
             case 'REGISTER': {
-                iRegisterReady = true
-                if (iRegisterRequested) {
+                registerReady = true
+                if (registerRequested) {
                     Register()
                 }
             }
@@ -298,19 +293,19 @@ data_event[vdvObject] {
                 GetInitialized()
             }
             case 'MUTE': {
-                switch (cCmdParam[1]) {
+                switch (cmdParam[1]) {
                     case 'ON': {
-                        BuildCommand('COMMAND_MSG', BuildString(cAtt, cIndex[1], '1'))
+                        BuildCommand('COMMAND_MSG', BuildString(att, index[1], '1'))
                     }
                     case 'OFF': {
-                        BuildCommand('COMMAND_MSG', BuildString(cAtt, cIndex[1], '0'))
+                        BuildCommand('COMMAND_MSG', BuildString(att, index[1], '0'))
                     }
                     case 'TOGGLE': {
-                        if (uVolume.Mute.Actual) {
-                            BuildCommand('COMMAND_MSG', BuildString(cAtt, cIndex[1], '0'))
+                        if (volume.Mute.Actual) {
+                            BuildCommand('COMMAND_MSG', BuildString(att, index[1], '0'))
                         }
                         else {
-                            BuildCommand('COMMAND_MSG', BuildString(cAtt, cIndex[1], '1'))
+                            BuildCommand('COMMAND_MSG', BuildString(att, index[1], '1'))
                         }
                     }
                 }
@@ -324,13 +319,13 @@ channel_event[vdvObject, 0] {
     on: {
         switch (channel.channel) {
             case VOL_MUTE: {
-                NAVLog("'DMP_STATE_OBJECT_MUTE_TOGGLE<', itoa(iID), '>'")
+                NAVLog("'DMP_STATE_OBJECT_MUTE_TOGGLE<', itoa(id), '>'")
 
-                if (uVolume.Mute.Actual) {
-                    BuildCommand('COMMAND_MSG', BuildString(cAtt, cIndex[1], '0'))
+                if (volume.Mute.Actual) {
+                    BuildCommand('COMMAND_MSG', BuildString(att, index[1], '0'))
                 }
                 else {
-                    BuildCommand('COMMAND_MSG', BuildString(cAtt, cIndex[1], '1'))
+                    BuildCommand('COMMAND_MSG', BuildString(att, index[1], '1'))
                 }
             }
         }
@@ -342,7 +337,7 @@ channel_event[vdvObject, 0] {
 
 
 timeline_event[TL_NAV_FEEDBACK] {
-    [vdvObject, VOL_MUTE_FB]	= (uVolume.Mute.Actual)
+    [vdvObject, VOL_MUTE_FB]	= (volume.Mute.Actual)
 }
 
 

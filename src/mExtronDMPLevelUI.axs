@@ -69,13 +69,13 @@ DEFINE_TYPE
 (***********************************************************)
 DEFINE_VARIABLE
 
-volatile integer iLocked
+volatile integer locked
 
-volatile integer iLevelTouched
+volatile integer levelTouched
 volatile sinteger siRequestedLevel = -1
 
-volatile sinteger iLevel
-volatile sinteger iOldLevel
+volatile sinteger level
+volatile sinteger oldLevel
 
 
 (***********************************************************)
@@ -95,17 +95,17 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
 
 define_function Update() {
-    iOldLevel = iLevel
+    oldLevel = level
 
     if (siRequestedLevel >= 0) {
-        if (siRequestedLevel == iLevel) {
+        if (siRequestedLevel == level) {
             siRequestedLevel = -1
         }
     }
     else {
-        if (!iLevelTouched) {
-            send_level dvTP, LEVEL_VOLUME, iLevel
-            send_command dvTP, "'^TXT-', itoa(ADDRESS_LEVEL_PERCENTAGE), ',0,', itoa(NAVScaleValue(type_cast(iLevel), 255, 100, 0)), '%'"
+        if (!levelTouched) {
+            send_level dvTP, LEVEL_VOLUME, level
+            send_command dvTP, "'^TXT-', itoa(ADDRESS_LEVEL_PERCENTAGE), ',0,', itoa(NAVScaleValue(type_cast(level), 255, 100, 0)), '%'"
         }
     }
 }
@@ -124,7 +124,7 @@ DEFINE_START {
 DEFINE_EVENT
 
 level_event[vdvLevelObject, LEVEL_VOLUME] {
-    iLevel = level.value
+    level = level.value
     Update()
 }
 
@@ -134,28 +134,28 @@ button_event[dvTP, 0] {
         switch (button.input.channel) {
             case VOL_UP:
             case VOL_DN: {
-                if (!iLocked) {
+                if (!locked) {
                     to[vdvLevelObject, button.input.channel]
                 }
             }
             case LOCK_TOGGLE: {
-                iLocked = !iLocked
+                locked = !locked
             }
             case LOCK_ON: {
-                iLocked = true
+                locked = true
             }
             case LOCK_OFF: {
-                iLocked = false
+                locked = false
             }
             case LEVEL_TOUCH: {
-                iLevelTouched = true
+                levelTouched = true
             }
         }
     }
     release: {
         switch (button.input.channel) {
             case LEVEL_TOUCH: {
-                iLevelTouched = false
+                levelTouched = false
             }
         }
     }
@@ -163,7 +163,7 @@ button_event[dvTP, 0] {
 
 
 level_event[dvTP, LEVEL_VOLUME] {
-    if (iLevelTouched && !iLocked) {
+    if (levelTouched && !locked) {
         siRequestedLevel = level.value
         send_command vdvLevelObject, "'VOLUME-', itoa(siRequestedLevel)"
         send_command dvTP, "'^TXT-', itoa(ADDRESS_LEVEL_PERCENTAGE), ',0,', itoa(NAVScaleValue(type_cast(siRequestedLevel), 255, 100, 0)), '%'"
@@ -179,9 +179,9 @@ data_event[dvTP] {
 
 
 timeline_event[TL_NAV_FEEDBACK] {
-    [dvTP, LOCK_TOGGLE]	= (iLocked)
-    [dvTP, LOCK_ON]	= (iLocked)
-    [dvTP, LOCK_OFF]	= (!iLocked)
+    [dvTP, LOCK_TOGGLE]	= (locked)
+    [dvTP, LOCK_ON]	= (locked)
+    [dvTP, LOCK_OFF]	= (!locked)
 }
 
 
