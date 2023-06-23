@@ -293,11 +293,11 @@ DEFINE_EVENT
 data_event[dvPort] {
     online: {
         if (data.device.number != 0) {
-            send_command data.device,"'SET BAUD 38400,N,8,1 485 DISABLE'"
-            send_command data.device,"'B9MOFF'"
-            send_command data.device,"'CHARD-0'"
-            send_command data.device,"'CHARDM-0'"
-            send_command data.device,"'HSOFF'"
+            NAVCommand(data.device, "'SET BAUD 38400,N,8,1 485 DISABLE'")
+            NAVCommand(data.device, "'B9MOFF'")
+            NAVCommand(data.device, "'CHARD-0'")
+            NAVCommand(data.device, "'CHARDM-0'")
+            NAVCommand(data.device, "'HSOFF'")
         }
 
         NAVTimelineStart(TL_HEARTBEAT, heartbeat, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)

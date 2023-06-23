@@ -110,7 +110,7 @@ define_function Update() {
                 send_level dvTP[x], LEVEL_VOLUME, level
             }
 
-            send_command dvTP, "'^TXT-', itoa(ADDRESS_LEVEL_PERCENTAGE), ',0,', itoa(NAVScaleValue(type_cast(level), 255, 100, 0)), '%'"
+            NAVCommand(dvTP, "'^TXT-', itoa(ADDRESS_LEVEL_PERCENTAGE), ',0,', itoa(NAVScaleValue(type_cast(level), 255, 100, 0)), '%'")
         }
     }
 }
@@ -170,8 +170,8 @@ button_event[dvTP, 0] {
 level_event[dvTP, LEVEL_VOLUME] {
     if (levelTouched && !locked) {
         siRequestedLevel = level.value
-        send_command vdvLevelObject, "'VOLUME-', itoa(siRequestedLevel)"
-        send_command dvTP, "'^TXT-', itoa(ADDRESS_LEVEL_PERCENTAGE), ',0,', itoa(NAVScaleValue(type_cast(siRequestedLevel), 255, 100, 0)), '%'"
+        NAVCommand(vdvLevelObject, "'VOLUME-', itoa(siRequestedLevel)")
+        NAVCommand(dvTP, "'^TXT-', itoa(ADDRESS_LEVEL_PERCENTAGE), ',0,', itoa(NAVScaleValue(type_cast(siRequestedLevel), 255, 100, 0)), '%'")
     }
 }
 

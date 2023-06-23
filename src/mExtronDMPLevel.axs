@@ -105,7 +105,7 @@ DEFINE_MUTUALLY_EXCLUSIVE
 
 define_function SendCommand(char param[]) {
     NAVLog("'Command to ', NAVStringSurroundWith(NAVDeviceToString(vdvCommObject), '[', ']'), ': [', param, ']'")
-    send_command vdvCommObject, "param"
+    NAVCommand(vdvCommObject, "param")
 }
 
 
