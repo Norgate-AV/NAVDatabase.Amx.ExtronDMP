@@ -45,6 +45,14 @@ constant integer MAX_OBJECT_TAGS	= 10
 
 constant integer MAX_OBJECT_ATTRIBUTE_VALUES = 10
 
+constant char ATTRIBUTE_ID_GAIN[] = 'G'
+constant char ATTRIBUTE_ID_MUTE[] = 'M'
+constant char ATTRIBUTE_ID_GROUP[] = 'D'
+
+constant char ATTRIBUTE_RESPONSE_HEADER[] = 'Ds'
+constant char ATTRIBUTE_RESPONSE_HEADER_GROUP[] = 'Grpm'
+constant char ATTRIBUTE_RESPONSE_HEADER_GROUP_SOFT_LIMITS[] = "ATTRIBUTE_RESPONSE_HEADER_GROUP, 'L'"
+
 
 DEFINE_TYPE
 
@@ -64,19 +72,19 @@ struct _DspObject {
 
 define_function ObjectTagInit(_DspObject object) {
     switch (upper_string(object.Attribute.Id)) {
-        case 'G': {
-            object.Tag[1] = "'Ds', object.Attribute.Id, format('%01d', atoi(object.Attribute.Value[1])), '*'"
-            object.Tag[2] = "'Ds', object.Attribute.Id, format('%02d' ,atoi(object.Attribute.Value[1])), '*'"
+        case ATTRIBUTE_ID_GAIN: {
+            object.Tag[1] = "ATTRIBUTE_RESPONSE_HEADER, object.Attribute.Id, format('%01d', atoi(object.Attribute.Value[1])), '*'"
+            object.Tag[2] = "ATTRIBUTE_RESPONSE_HEADER, object.Attribute.Id, format('%02d', atoi(object.Attribute.Value[1])), '*'"
         }
-        case 'M': {
-            object.Tag[1] = "'Ds', object.Attribute.Id, format('%01d', atoi(object.Attribute.Value[1])), '*'"
-            object.Tag[2] = "'Ds', object.Attribute.Id, format('%02d', atoi(object.Attribute.Value[1])), '*'"
+        case ATTRIBUTE_ID_MUTE: {
+            object.Tag[1] = "ATTRIBUTE_RESPONSE_HEADER, object.Attribute.Id, format('%01d', atoi(object.Attribute.Value[1])), '*'"
+            object.Tag[2] = "ATTRIBUTE_RESPONSE_HEADER, object.Attribute.Id, format('%02d', atoi(object.Attribute.Value[1])), '*'"
         }
-        case 'D': {
-            object.Tag[1] = "'Grpm', object.Attribute.Id, format('%01d', atoi(object.Attribute.Value[1])), '*'"
-            object.Tag[2] = "'Grpm', object.Attribute.Id, format('%02d', atoi(object.Attribute.Value[1])), '*'"
-            object.Tag[3] = "'GrpmL', format('%01d', atoi(object.Attribute.Value[1])), '*'"
-            object.Tag[4] = "'GrpmL', format('%02d', atoi(object.Attribute.Value[1])), '*'"
+        case ATTRIBUTE_ID_GROUP: {
+            object.Tag[1] = "ATTRIBUTE_RESPONSE_HEADER_GROUP, object.Attribute.Id, format('%01d', atoi(object.Attribute.Value[1])), '*'"
+            object.Tag[2] = "ATTRIBUTE_RESPONSE_HEADER_GROUP, object.Attribute.Id, format('%02d', atoi(object.Attribute.Value[1])), '*'"
+            object.Tag[3] = "ATTRIBUTE_RESPONSE_HEADER_GROUP_SOFT_LIMITS, format('%01d', atoi(object.Attribute.Value[1])), '*'"
+            object.Tag[4] = "ATTRIBUTE_RESPONSE_HEADER_GROUP_SOFT_LIMITS, format('%02d', atoi(object.Attribute.Value[1])), '*'"
         }
     }
 }
