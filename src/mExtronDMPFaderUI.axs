@@ -1,8 +1,8 @@
 MODULE_NAME='mExtronDMPFaderUI'	(
-						    dev dvTP,
-						    dev vdvLevelObject,
-						    dev vdvStateObject
-						)
+                                    dev dvTP,
+                                    dev vdvLevelObject,
+                                    dev vdvStateObject
+                                )
 
 (***********************************************************)
 #include 'NAVFoundation.ModuleBase.axi'
@@ -60,6 +60,7 @@ constant integer LOCK_ON	= 302
 constant integer LOCK_OFF	= 303
 constant integer LEVEL_TOUCH	= 304
 
+
 (***********************************************************)
 (*              DATA TYPE DEFINITIONS GO BELOW             *)
 (***********************************************************)
@@ -81,6 +82,7 @@ volatile sinteger iOldLevel
 
 volatile char cLabel[NAV_MAX_CHARS]
 
+
 (***********************************************************)
 (*               LATCHING DEFINITIONS GO BELOW             *)
 (***********************************************************)
@@ -96,21 +98,25 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (***********************************************************)
 (* EXAMPLE: DEFINE_FUNCTION <RETURN_TYPE> <NAME> (<PARAMETERS>) *)
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
+
 define_function Update() {
     iOldLevel = iLevel
+
     if (siRequestedLevel >= 0) {
-	if (siRequestedLevel == iLevel) {
-	    siRequestedLevel = -1
-	}
-    }else {
-	if (!iLevelTouched) {
-	    send_level dvTP,LEVEL_VOLUME,iLevel
-	    send_command dvTP,"'^TXT-',itoa(ADDRESS_LEVEL_PERCENTAGE),',0,',itoa(NAVScaleValue(type_cast(iLevel),255,100,0)),'%'"
-	}
+        if (siRequestedLevel == iLevel) {
+            siRequestedLevel = -1
+        }
+    }
+    else {
+        if (!iLevelTouched) {
+            send_level dvTP, LEVEL_VOLUME, iLevel
+            send_command dvTP, "'^TXT-', itoa(ADDRESS_LEVEL_PERCENTAGE), ',0,', itoa(NAVScaleValue(type_cast(iLevel), 255, 100, 0)), '%'"
+        }
     }
 
-    NAVText(dvTP,ADDRESS_LABEL,'0',cLabel)
+    NAVText(dvTP, ADDRESS_LABEL, '0', cLabel)
 }
+
 
 (***********************************************************)
 (*                STARTUP CODE GOES BELOW                  *)
@@ -118,97 +124,107 @@ define_function Update() {
 DEFINE_START {
 
 }
+
 (***********************************************************)
 (*                THE EVENTS GO BELOW                      *)
 (***********************************************************)
 DEFINE_EVENT
-level_event[vdvLevelObject,LEVEL_VOLUME] {
+
+level_event[vdvLevelObject, LEVEL_VOLUME] {
     iLevel = level.value
     Update()
 }
 
-button_event[dvTP,0] {
+
+button_event[dvTP, 0] {
     push: {
-	switch (button.input.channel) {
-	    case VOL_UP:
-	    case VOL_DN: {
-		if (!iLocked) {
-		    to[vdvLevelObject,button.input.channel]
-		}
-	    }
-	    case VOL_MUTE: { to[vdvStateObject,button.input.channel] }
-	    case LOCK_TOGGLE: {
-		iLocked = !iLocked
-	    }
-	    case LOCK_ON: {
-		iLocked = true
-	    }
-	    case LOCK_OFF: {
-		iLocked = false
-	    }
-	    case LEVEL_TOUCH: {
-		iLevelTouched = true
-	    }
-	}
+        switch (button.input.channel) {
+            case VOL_UP:
+            case VOL_DN: {
+                if (!iLocked) {
+                    to[vdvLevelObject, button.input.channel]
+                }
+            }
+            case VOL_MUTE: {
+                to[vdvStateObject, button.input.channel]
+            }
+            case LOCK_TOGGLE: {
+                iLocked = !iLocked
+            }
+            case LOCK_ON: {
+                iLocked = true
+            }
+            case LOCK_OFF: {
+                iLocked = false
+            }
+            case LEVEL_TOUCH: {
+                iLevelTouched = true
+            }
+        }
     }
     release: {
-	switch (button.input.channel) {
-	    case LEVEL_TOUCH: {
-		iLevelTouched = false
-	    }
-	}
+        switch (button.input.channel) {
+            case LEVEL_TOUCH: {
+                iLevelTouched = false
+            }
+        }
     }
 }
 
-level_event[dvTP,LEVEL_VOLUME] {
+
+level_event[dvTP, LEVEL_VOLUME] {
     if (iLevelTouched && !iLocked) {
-	siRequestedLevel = level.value
-	send_command vdvLevelObject,"'VOLUME-',itoa(siRequestedLevel)"
-	send_command dvTP,"'^TXT-',itoa(ADDRESS_LEVEL_PERCENTAGE),',0,',itoa(NAVScaleValue(type_cast(siRequestedLevel),255,100,0)),'%'"
+        siRequestedLevel = level.value
+        send_command vdvLevelObject, "'VOLUME-', itoa(siRequestedLevel)"
+        send_command dvTP, "'^TXT-', itoa(ADDRESS_LEVEL_PERCENTAGE), ',0,', itoa(NAVScaleValue(type_cast(siRequestedLevel), 255, 100, 0)), '%'"
     }
 }
+
 
 data_event[dvTP] {
     online: {
-	Update()
+        Update()
     }
 }
 
+
 data_event[vdvLevelObject] {
     online: {
-	NAVCommand(data.device,"'?LABEL'")
+        NAVCommand(data.device, "'?LABEL'")
     }
     command: {
         stack_var char cCmdHeader[NAV_MAX_CHARS]
-	stack_var char cCmdParam[2][NAV_MAX_CHARS]
-	NAVLog("'Command from ',NAVStringSurroundWith(NAVDeviceToString(data.device), '[', ']'),': [',data.text,']'")
-	cCmdHeader = DuetParseCmdHeader(data.text)
-	cCmdParam[1] = DuetParseCmdParam(data.text)
-	cCmdParam[2] = DuetParseCmdParam(data.text)
-	switch (cCmdHeader) {
-	    case 'PROPERTY': {
-		switch (cCmdParam[1]) {
-		    case 'LABEL': {
-			cLabel = cCmdParam[2]
-			Update()
-		    }
-		}
-	    }
-	}
+        stack_var char cCmdParam[2][NAV_MAX_CHARS]
+
+        NAVLog("'Command from ',NAVStringSurroundWith(NAVDeviceToString(data.device), '[', ']'),': [',data.text,']'")
+
+        cCmdHeader = DuetParseCmdHeader(data.text)
+        cCmdParam[1] = DuetParseCmdParam(data.text)
+        cCmdParam[2] = DuetParseCmdParam(data.text)
+
+        switch (cCmdHeader) {
+            case 'PROPERTY': {
+                switch (cCmdParam[1]) {
+                    case 'LABEL': {
+                        cLabel = cCmdParam[2]
+                        Update()
+                    }
+                }
+            }
+        }
     }
 }
 
 
 timeline_event[TL_NAV_FEEDBACK] {
-    //NAVLog("'DMP_STATE_UI_ARRAY_MAIN_LINE<',NAVStringSurroundWith(NAVDeviceToString(vdvStateObject), '[', ']'),'>'")
-    [dvTP,VOL_MUTE]	= ([vdvStateObject,VOL_MUTE_FB])
-    [dvTP,LOCK_TOGGLE]	= (iLocked)
-    [dvTP,LOCK_ON]	= (iLocked)
-    [dvTP,LOCK_OFF]	= (!iLocked)
+    [dvTP, VOL_MUTE]	= ([vdvStateObject, VOL_MUTE_FB])
+    [dvTP, LOCK_TOGGLE]	= (iLocked)
+    [dvTP, LOCK_ON]	= (iLocked)
+    [dvTP, LOCK_OFF]	= (!iLocked)
 }
+
 
 (***********************************************************)
 (*                     END OF PROGRAM                      *)
 (*        DO NOT PUT ANY CODE BELOW THIS COMMENT           *)
 (***********************************************************)
-
