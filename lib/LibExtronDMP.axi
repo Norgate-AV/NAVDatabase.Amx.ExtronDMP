@@ -63,7 +63,7 @@ struct _DspObject {
 
 
 define_function ObjectTagInit(_DspObject object) {
-    switch (upper_case(object.Attribute.Id)) {
+    switch (upper_string(object.Attribute.Id)) {
         case 'G': {
             object.Tag[1] = "'Ds', object.Attribute.Id, format('%01d', atoi(object.Attribute.Value[1])), '*'"
             object.Tag[2] = "'Ds', object.Attribute.Id, format('%02d' ,atoi(object.Attribute.Value[1])), '*'"
