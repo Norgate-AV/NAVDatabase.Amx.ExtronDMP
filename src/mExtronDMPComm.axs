@@ -80,6 +80,7 @@ volatile long ipCheck[] = { 3000 }
 volatile long register[]	= { 500 }
 
 volatile _Object object[MAX_OBJECTS]
+volatile _NAVCredential credential
 
 volatile char rxBuffer[NAV_MAX_BUFFER]
 volatile integer semaphore
@@ -93,9 +94,6 @@ volatile integer initializingObjectID
 
 volatile integer initialized
 volatile integer communicating
-
-volatile char userName[NAV_MAX_CHARS] = 'clearone'
-volatile char password[NAV_MAX_CHARS] = 'converge'
 
 volatile char objectTag[MAX_OBJECT_TAGS][MAX_OBJECTS][NAV_MAX_CHARS]
 
@@ -285,7 +283,7 @@ define_function NAVModulePropertyEventCallback(_NAVModulePropertyEvent event) {
             NAVTimelineStart(TL_IP_CHECK, ipCheck, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
         }
         case 'PASSWORD': {
-            password = event.Args[1]
+            credential.Password = event.Args[1]
         }
     }
 }
@@ -326,7 +324,7 @@ data_event[dvPort] {
         select {
             active (NAVContains(rxBuffer, "'Password:'")): {
                 rxBuffer = "''"
-                SendString("password, NAV_CR, NAV_LF");
+                SendString("credential.Password, NAV_CR, NAV_LF");
             }
             active (1): {
                 if (!semaphore) { Process() }
