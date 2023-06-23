@@ -41,7 +41,7 @@ SOFTWARE.
 DEFINE_CONSTANT
 
 constant integer MAX_OBJECTS	= 100
-constant integer MAX_OBJECT_TAGS	= 5
+constant integer MAX_OBJECT_TAGS	= 10
 
 
 DEFINE_TYPE
