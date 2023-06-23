@@ -5,8 +5,11 @@ MODULE_NAME='mExtronDMPComm'	(
                                 )
 
 (***********************************************************)
+#DEFINE USING_NAV_DEVICE_PRIORITY_QUEUE_SEND_NEXT_ITEM_EVENT_CALLBACK
+#DEFINE USING_NAV_DEVICE_PRIORITY_QUEUE_FAILED_RESPONSE_EVENT_CALLBACK
 #include 'NAVFoundation.ModuleBase.axi'
 #include 'NAVFoundation.SocketUtils.axi'
+#include 'NAVFoundation.DevicePriorityQueue.axi'
 #include 'LibExtronDMP.axi'
 
 /*
@@ -51,12 +54,8 @@ DEFINE_DEVICE
 DEFINE_CONSTANT
 
 constant long TL_IP_CHECK = 1
-constant long TL_QUEUE_FAILED_RESPONSE	= 2
 constant long TL_HEARTBEAT	= 3
 constant long TL_REGISTER	= 4
-
-constant integer MAX_QUEUE_COMMANDS = 50
-constant integer MAX_QUEUE_STATUS = 100
 
 
 (***********************************************************)
@@ -69,18 +68,6 @@ struct _Object {
     integer Registered
 }
 
-struct _Queue {
-    integer Busy
-    integer HasItems
-    integer CommandHead
-    integer CommandTail
-    integer StatusHead
-    integer StatusTail
-    integer StrikeCount
-    integer ResendLast
-    char LastMess[NAV_MAX_BUFFER]
-}
-
 
 (***********************************************************)
 (*               VARIABLE DEFINITIONS GO BELOW             *)
@@ -89,14 +76,9 @@ DEFINE_VARIABLE
 
 volatile long heartbeat[] = { 30000 }
 volatile long ipCheck[] = { 3000 }
-volatile long queueFailedResponse[]	= { 2500 }
 volatile long register[]	= { 500 }
 
 volatile _Object object[MAX_OBJECTS]
-
-volatile _Queue queue
-volatile char commandQueue[MAX_QUEUE_COMMANDS][NAV_MAX_BUFFER]
-volatile char statusQueue[MAX_QUEUE_STATUS][NAV_MAX_BUFFER]
 
 volatile char rxBuffer[NAV_MAX_BUFFER]
 volatile integer semaphore
@@ -152,85 +134,12 @@ define_function SendString(char payload[]) {
 }
 
 
-define_function AddToQueue(char item[], integer priority) {
-    stack_var integer queueWasEmpty
+define_function NAVDevicePriorityQueueSendNextItemEventCallback(char item[]) {
+    stack_var char payload[NAV_MAX_BUFFER]
 
-    queueWasEmpty = (!queue.HasItems && !queue.Busy)
+    payload = GetMess(item)
 
-    switch (priority) {
-        case true: {
-            select {
-                active (queue.CommandHead == max_length_array(commandQueue)): {
-                    if (queue.CommandTail != 1) {
-                        queue.CommandHead = 1
-                        commandQueue[queue.CommandHead] = item
-                        queue.HasItems = true
-                    }
-                }
-                active (queue.CommandTail != (queue.CommandHead + 1)): {
-                    queue.CommandHead++
-                    commandQueue[queue.CommandHead] = item
-                    queue.HasItems = true
-                }
-            }
-        }
-        case false: {
-            select {
-                active (queue.StatusHead == max_length_array(statusQueue)): {
-                    if (queue.StatusTail != 1) {
-                        queue.StatusHead = 1
-                        statusQueue[queue.StatusHead] = item
-                        queue.HasItems = true
-                    }
-                }
-                active (queue.StatusTail != (queue.StatusHead + 1)): {
-                    queue.StatusHead++
-                    statusQueue[queue.StatusHead] = item
-                    queue.HasItems = true
-                }
-            }
-        }
-    }
-
-    if (queueWasEmpty) { SendNextQueueItem(); }
-}
-
-
-define_function char[NAV_MAX_BUFFER] RemoveFromQueue() {
-    if (queue.HasItems && !queue.Busy) {
-        queue.Busy = true
-
-        select {
-            active (queue.CommandHead != queue.CommandTail): {
-                if (queue.CommandTail == max_length_array(commandQueue)) {
-                    queue.CommandTail = 1
-                }
-                else {
-                    queue.CommandTail++
-                }
-
-                queue.LastMess = commandQueue[queue.CommandTail]
-            }
-            active (queue.StatusHead != queue.StatusTail): {
-                if (queue.StatusTail == max_length_array(statusQueue)) {
-                    queue.StatusTail = 1
-                }
-                else {
-                    queue.StatusTail++
-                }
-
-                queue.LastMess = statusQueue[queue.StatusTail]
-            }
-        }
-
-        if ((queue.CommandHead == queue.CommandTail) && (queue.StatusHead == queue.StatusTail)) {
-            queue.HasItems = false
-        }
-
-        return GetMess(queue.LastMess)
-    }
-
-    return ''
+    SendString(payload)
 }
 
 
@@ -270,37 +179,14 @@ define_function InitializeObjects() {
 }
 
 
-define_function GoodResponse() {
-    queue.Busy = false
-    NAVTimelineStop(TL_QUEUE_FAILED_RESPONSE)
-
-    queue.StrikeCount = 0
-    queue.ResendLast = false
-    SendNextQueueItem()
-}
-
-
-define_function SendNextQueueItem() {
-    stack_var char temp[NAV_MAX_BUFFER]
-
-    if (queue.ResendLast) {
-        queue.ResendLast = false
-        temp = GetMess(queue.LastMess)
-    }
-    else {
-        temp= RemoveFromQueue()
-    }
-
-    if (length_array(temp)) {
-        SendString(temp)
-        timeline_create(TL_QUEUE_FAILED_RESPONSE, queueFailedResponse, length_array(queueFailedResponse), TIMELINE_ABSOLUTE, TIMELINE_ONCE)
-    }
+define_function NAVDevicePriorityQueueFailedResponseEventCallback(_NAVDevicePriorityQueue queue) {
+    communicating = false
 }
 
 
 define_function Reset() {
     ReInitializeObjects()
-    InitializeQueue()
+    // InitializeQueue()
 }
 
 
@@ -314,19 +200,6 @@ define_function ReInitializeObjects() {
     for (x = 1; x <= length_array(object); x++) {
         object[x].Initialized = false
     }
-}
-
-
-define_function InitializeQueue() {
-    queue.Busy = false
-    queue.HasItems = false
-    queue.CommandHead = 1
-    queue.CommandTail = 1
-    queue.StatusHead = 1
-    queue.StatusTail = 1
-    queue.StrikeCount = 0
-    queue.ResendLast = false
-    queue.LastMess = "''"
 }
 
 
@@ -371,7 +244,7 @@ define_function Process() {
                 }
             }
 
-            GoodResponse()
+            NAVDevicePriorityQueueGoodResponse(priorityQueue)
         }
     }
 
@@ -501,11 +374,15 @@ data_event[vdvCommObjects] {
         cmdHeader = DuetParseCmdHeader(data.text)
 
         switch (cmdHeader) {
-            case 'COMMAND_MSG': { AddToQueue("cmdHeader, data.text", true) }
-            case 'POLL_MSG': { AddToQueue("cmdHeader, data.text", false) }
+            case 'COMMAND_MSG': {
+                NAVDevicePriorityQueueEnqueue(priorityQueue, "cmdHeader, data.text", true)
+            }
+            case 'POLL_MSG': {
+                NAVDevicePriorityQueueEnqueue(priorityQueue, "cmdHeader, data.text", false)
+            }
             case 'RESPONSE_OK': {
-                if (NAVGetStringBetween(data.text, '<', '>') == NAVGetStringBetween(queue.LastMess, '<', '>')) {
-                    GoodResponse()
+                if (NAVGetStringBetween(data.text, '<', '>') == NAVGetStringBetween(priorityQueue.LastMessage, '<', '>')) {
+                    NAVDevicePriorityQueueGoodResponse(priorityQueue)
                 }
             }
             case 'INIT_DONE': {
@@ -564,8 +441,8 @@ data_event[vdvCommObjects] {
 
 
 timeline_event[TL_HEARTBEAT] {
-    if (!queue.HasItems && !queue.Busy) {
-        AddToQueue("'POLL_MSG<HEARTBEAT|', NAV_ESC, '3CV', NAV_CR, '>'", false)
+    if (!NAVDevicePriorityQueueHasItems(priorityQueue) && !priorityQueue.Busy) {
+        NAVDevicePriorityQueueEnqueue(priorityQueue, "'POLL_MSG<HEARTBEAT|', NAV_ESC, '3CV', NAV_CR, '>'", false)
     }
 }
 
@@ -583,21 +460,6 @@ timeline_event[TL_REGISTER] {
 
     if (x == length_array(vdvCommObjects)) {
         timeline_kill(timeline.id)
-    }
-}
-
-
-timeline_event[TL_QUEUE_FAILED_RESPONSE] {
-    if (queue.Busy) {
-        if (queue.StrikeCount < 3) {
-            queue.StrikeCount++
-            queue.ResendLast = true
-            SendNextQueueItem()
-        }
-        else {
-            communicating = false
-            Reset()
-        }
     }
 }
 
