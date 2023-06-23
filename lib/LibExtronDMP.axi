@@ -43,13 +43,21 @@ DEFINE_CONSTANT
 constant integer MAX_OBJECTS	= 100
 constant integer MAX_OBJECT_TAGS	= 10
 
+constant integer MAX_OBJECT_ATTRIBUTE_VALUES = 10
+
 
 DEFINE_TYPE
+
+struct _DspAttribute {
+    char Id[NAV_MAX_CHARS]
+    char Value[MAX_ATTRIBUTE_VALUES][NAV_MAX_CHARS]
+}
 
 struct _DspObject {
     integer Id
     integer IsInitialized
     integer IsRegistered
+    _DspAttribute Attribute
     char Tag[MAX_OBJECT_TAGS][NAV_MAX_CHARS]
 }
 
