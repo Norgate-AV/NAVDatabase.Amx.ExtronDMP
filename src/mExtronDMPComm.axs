@@ -354,7 +354,7 @@ data_event[vdvObject] {
                 switch (cmdParam[1]) {
                     case 'IP_ADDRESS': {
                         ipAddress = cmdParam[2]
-                        timeline_create(TL_IP_CHECK, ipCheck, length_array(ipCheck), timeline_absolute, timeline_repeat)
+                        NAVTimelineStart(TL_IP_CHECK, ipCheck, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
                     }
                     case 'USER_NAME': {
                         userName = cmdParam[2]

@@ -424,12 +424,12 @@ channel_event[vdvObject, 0] {
         switch (channel.channel) {
             case VOL_UP: {
                 if (isInitialized) {
-                    timeline_create(TL_DRIVE, drive, length_array(drive), TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
+                    NAVTimelineStart(TL_DRIVE, drive, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
                 }
             }
             case VOL_DN: {
                 if (isInitialized) {
-                    timeline_create(TL_DRIVE, drive, length_array(drive), TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
+                    NAVTimelineStart(TL_DRIVE, drive, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
                 }
             }
         }
