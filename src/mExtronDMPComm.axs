@@ -301,7 +301,6 @@ data_event[dvPort] {
         NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_STRING_FROM, data.device, data.text))
 
         select {
-
             active (NAVContains(rxBuffer, "'Password:'")): {
                 rxBuffer = "''"
                 SendString("password, NAV_CR, NAV_LF");
