@@ -1,5 +1,5 @@
 MODULE_NAME='mExtronDMPComm'	(
-                                    dev vdvControl,
+                                    dev vdvObject,
                                     dev vdvCommObjects[],
                                     dev dvPort
                                 )
@@ -448,7 +448,7 @@ data_event[dvPort] {
 }
 
 
-data_event[vdvControl] {
+data_event[vdvObject] {
     command: {
         stack_var char cmdHeader[NAV_MAX_CHARS]
         stack_var char cmdParam[2][NAV_MAX_CHARS]
@@ -518,7 +518,7 @@ data_event[vdvCommObjects] {
 
                 if (get_last(vdvCommObjects) == length_array(vdvCommObjects)) {
                     // Init is Done!
-                    send_string vdvControl, "'INIT_DONE'"
+                    send_string vdvObject, "'INIT_DONE'"
                 }
             }
             case 'REGISTER': {
@@ -603,9 +603,9 @@ timeline_event[TL_QUEUE_FAILED_RESPONSE] {
 
 
 timeline_event[TL_NAV_FEEDBACK] {
-    [vdvControl, NAV_IP_CONNECTED]	= (ipConnected && ipAuthenticated)
-    [vdvControl, DEVICE_COMMUNICATING] = (communicating)
-    [vdvControl, DATA_INITIALIZED] = (initialized)
+    [vdvObject, NAV_IP_CONNECTED]	= (ipConnected && ipAuthenticated)
+    [vdvObject, DEVICE_COMMUNICATING] = (communicating)
+    [vdvObject, DATA_INITIALIZED] = (initialized)
 }
 
 
