@@ -68,6 +68,7 @@ constant integer TELNET_WONT	= $FC
 (*              DATA TYPE DEFINITIONS GO BELOW             *)
 (***********************************************************)
 DEFINE_TYPE
+
 struct _Object {
     integer iInitialized
     integer iRegistered
@@ -85,10 +86,12 @@ struct _Queue {
     char cLastMess[NAV_MAX_BUFFER]
 }
 
+
 (***********************************************************)
 (*               VARIABLE DEFINITIONS GO BELOW             *)
 (***********************************************************)
 DEFINE_VARIABLE
+
 volatile long ltHeartbeat[] = { 30000 }
 volatile long ltIPCheck[] = { 3000 }
 volatile long ltQueueFailedResponse[]	= { 2500 }
@@ -125,6 +128,7 @@ volatile integer iRegisteringObjectID
 volatile integer iAllRegistered
 
 volatile integer iReadyToInitialize
+
 
 (***********************************************************)
 (*               LATCHING DEFINITIONS GO BELOW             *)
