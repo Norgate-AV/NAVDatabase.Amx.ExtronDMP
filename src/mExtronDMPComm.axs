@@ -161,19 +161,22 @@ define_function char[NAV_MAX_BUFFER] GetMess(char param[]) {
 define_function InitializeObjects() {
     stack_var integer x
 
-    if (!initializing) {
-        for (x = 1; x <= length_array(vdvCommObjects); x++) {
-            if (object[x].Registered && !object[x].Initialized) {
-                initializing = true
-                send_string vdvCommObjects[x], "'INIT<', itoa(x), '>'"
-                initializingObjectID = x
-                break
-            }
+    if (initializing) {
+        return
+    }
 
-            if (x == length_array(vdvCommObjects) && !initializing) {
-                initializingObjectID = x
-                initialized = true
-            }
+    for (x = 1; x <= length_array(vdvCommObjects); x++) {
+        if (object[x].Registered && !object[x].Initialized) {
+            initializing = true
+            send_string vdvCommObjects[x], "'INIT<', itoa(x), '>'"
+            initializingObjectID = x
+
+            break
+        }
+
+        if (x == length_array(vdvCommObjects) && !initializing) {
+            initializingObjectID = x
+            initialized = true
         }
     }
 }
@@ -205,47 +208,51 @@ define_function ReInitializeObjects() {
 
 define_function Process() {
     stack_var char temp[NAV_MAX_BUFFER]
+    stack_var integer responseMessID
 
     semaphore = true
 
     while (length_array(rxBuffer) && NAVContains(rxBuffer, "NAV_LF")) {
         temp = remove_string(rxBuffer, "NAV_LF", 1)
 
-        if (length_array(temp)) {
-            stack_var integer responseMessID
+        if (!length_array(temp)) {
+            continue
+        }
 
-            NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_PARSING_STRING_FROM, dvPort, temp))
+        NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_PARSING_STRING_FROM, dvPort, temp))
 
-            temp = NAVStripCharsFromRight(temp, 2)
+        temp = NAVStripCharsFromRight(temp, 2)
 
-            select {
-                active (NAVContains(temp, 'Vrb')): {
-                    if (!communicating) {
-                        communicating = true
-                    }
+        select {
+            active (NAVContains(temp, 'Vrb')): {
+                communicating = true
 
-                    if (communicating && !initialized && readyToInitialize) {
-                        InitializeObjects()
-                    }
-                }
-                active (1): {
-                    stack_var integer x
-                    stack_var integer i
-                    for (x = 1; x <= length_array(vdvCommObjects); x++) {
-                        for (i = 1; i <= MAX_OBJECT_TAGS; i++) {
-                            if (NAVContains(temp, objectTag[i][x])) {
-                                send_string vdvCommObjects[x], "'RESPONSE_MSG<', temp, '>'"
-                                NAVLog("'EXTRON_DMP_SENDING_RESPONSE_MSG<', temp, '|', itoa(x), '>'")
-                                i = (MAX_OBJECT_TAGS + 1)
-                                x = (MAX_OBJECTS + 1)
-                            }
-                        }
-                    }
+                if (!initialized && readyToInitialize) {
+                    InitializeObjects()
                 }
             }
+            active (true): {
+                stack_var integer x
+                stack_var integer z
 
-            NAVDevicePriorityQueueGoodResponse(priorityQueue)
+                for (x = 1; x <= length_array(vdvCommObjects); x++) {
+                    for (z = 1; z <= MAX_OBJECT_TAGS; z++) {
+                        if (!NAVContains(temp, objectTag[z][x])) {
+                            continue
+                        }
+
+                        send_string vdvCommObjects[x], "'RESPONSE_MSG<', temp, '>'"
+                        NAVLog("'EXTRON_DMP_SENDING_RESPONSE_MSG<', temp, '|', itoa(x), '>'")
+
+                        break
+                    }
+
+                    break
+                }
+            }
         }
+
+        NAVDevicePriorityQueueGoodResponse(priorityQueue)
     }
 
     semaphore = false
@@ -253,9 +260,11 @@ define_function Process() {
 
 
 define_function MaintainIPConnection() {
-    if (!ipConnected) {
-        NAVClientSocketOpen(dvPort.port, ipAddress, NAV_TELNET_PORT, IP_TCP)
+    if (ipConnected) {
+        return
     }
+
+    NAVClientSocketOpen(dvPort.port, ipAddress, NAV_TELNET_PORT, IP_TCP)
 }
 
 
