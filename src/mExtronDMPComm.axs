@@ -7,6 +7,7 @@ MODULE_NAME='mExtronDMPComm'	(
 (***********************************************************)
 #DEFINE USING_NAV_DEVICE_PRIORITY_QUEUE_SEND_NEXT_ITEM_EVENT_CALLBACK
 #DEFINE USING_NAV_DEVICE_PRIORITY_QUEUE_FAILED_RESPONSE_EVENT_CALLBACK
+#DEFINE USING_NAV_MODULE_BASE_PROPERTY_EVENT_CALLBACK
 #include 'NAVFoundation.ModuleBase.axi'
 #include 'NAVFoundation.SocketUtils.axi'
 #include 'NAVFoundation.DevicePriorityQueue.axi'
@@ -277,6 +278,19 @@ define_function SendHeartbeat() {
 }
 
 
+define_function NAVModulePropertyEventCallback(_NAVModulePropertyEvent event) {
+    switch (upper_string(event.Name)) {
+        case 'IP_ADDRESS': {
+            ipAddress = event.Args[1]
+            NAVTimelineStart(TL_IP_CHECK, ipCheck, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
+        }
+        case 'PASSWORD': {
+            password = event.Args[1]
+        }
+    }
+}
+
+
 (***********************************************************)
 (*                STARTUP CODE GOES BELOW                  *)
 (***********************************************************)
@@ -340,27 +354,13 @@ data_event[dvPort] {
 
 data_event[vdvObject] {
     command: {
-        stack_var char cmdHeader[NAV_MAX_CHARS]
-        stack_var char cmdParam[2][NAV_MAX_CHARS]
+        stack_var _NAVSnapiMessage message
 
         NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM, data.device, data.text))
 
-        cmdHeader = DuetParseCmdHeader(data.text)
-        cmdParam[1] = DuetParseCmdParam(data.text)
-        cmdParam[2] = DuetParseCmdParam(data.text)
+        NAVParseSnapiMessage(data.text, message)
 
-        switch (cmdHeader) {
-            case 'PROPERTY': {
-                switch (cmdParam[1]) {
-                    case 'IP_ADDRESS': {
-                        ipAddress = cmdParam[2]
-                        NAVTimelineStart(TL_IP_CHECK, ipCheck, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
-                    }
-                    case 'PASSWORD': {
-                        password = cmdParam[2]
-                    }
-                }
-            }
+        switch (message.Header) {
             case 'INIT': {
                 stack_var integer x
 
