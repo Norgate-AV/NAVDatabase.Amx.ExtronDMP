@@ -259,6 +259,15 @@ define_function MaintainIPConnection() {
 }
 
 
+define_function SendHeartbeat() {
+    if (NAVDevicePriorityQueueHasItems(priorityQueue) || priorityQueue.Busy) {
+        return
+    }
+
+    NAVDevicePriorityQueueEnqueue(priorityQueue, "'POLL_MSG<HEARTBEAT|', NAV_ESC, '3CV', NAV_CR, '>'", false)
+}
+
+
 (***********************************************************)
 (*                STARTUP CODE GOES BELOW                  *)
 (***********************************************************)
@@ -440,11 +449,7 @@ data_event[vdvCommObjects] {
 }
 
 
-timeline_event[TL_HEARTBEAT] {
-    if (!NAVDevicePriorityQueueHasItems(priorityQueue) && !priorityQueue.Busy) {
-        NAVDevicePriorityQueueEnqueue(priorityQueue, "'POLL_MSG<HEARTBEAT|', NAV_ESC, '3CV', NAV_CR, '>'", false)
-    }
-}
+timeline_event[TL_HEARTBEAT] { SendHeartbeat() }
 
 
 timeline_event[TL_IP_CHECK] { MaintainIPConnection() }
