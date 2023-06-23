@@ -161,13 +161,13 @@ define_function AddToQueue(char item[], integer priority) {
         case true: {
             select {
                 active (queue.CommandHead == max_length_array(commandQueue)): {
-                    if (queue.CommandTail <> 1) {
+                    if (queue.CommandTail != 1) {
                         queue.CommandHead = 1
                         commandQueue[queue.CommandHead] = item
                         queue.HasItems = true
                     }
                 }
-                active (queue.CommandTail <> (queue.CommandHead + 1)): {
+                active (queue.CommandTail != (queue.CommandHead + 1)): {
                     queue.CommandHead++
                     commandQueue[queue.CommandHead] = item
                     queue.HasItems = true
@@ -177,13 +177,13 @@ define_function AddToQueue(char item[], integer priority) {
         case false: {
             select {
                 active (queue.StatusHead == max_length_array(statusQueue)): {
-                    if (queue.StatusTail <> 1) {
+                    if (queue.StatusTail != 1) {
                         queue.StatusHead = 1
                         statusQueue[queue.StatusHead] = item
                         queue.HasItems = true
                     }
                 }
-                active (queue.StatusTail <> (queue.StatusHead + 1)): {
+                active (queue.StatusTail != (queue.StatusHead + 1)): {
                     queue.StatusHead++
                     statusQueue[queue.StatusHead] = item
                     queue.HasItems = true
@@ -201,7 +201,7 @@ define_function char[NAV_MAX_BUFFER] RemoveFromQueue() {
         queue.Busy = true
 
         select {
-            active (queue.CommandHead <> queue.CommandTail): {
+            active (queue.CommandHead != queue.CommandTail): {
                 if (queue.CommandTail == max_length_array(commandQueue)) {
                     queue.CommandTail = 1
                 }
@@ -211,7 +211,7 @@ define_function char[NAV_MAX_BUFFER] RemoveFromQueue() {
 
                 queue.LastMess = commandQueue[queue.CommandTail]
             }
-            active (queue.StatusHead <> queue.StatusTail): {
+            active (queue.StatusHead != queue.StatusTail): {
                 if (queue.StatusTail == max_length_array(statusQueue)) {
                     queue.StatusTail = 1
                 }
@@ -401,7 +401,7 @@ DEFINE_EVENT
 
 data_event[dvPort] {
     online: {
-        if (data.device.number <> 0) {
+        if (data.device.number != 0) {
             send_command data.device,"'SET BAUD 38400,N,8,1 485 DISABLE'"
             send_command data.device,"'B9MOFF'"
             send_command data.device,"'CHARD-0'"
