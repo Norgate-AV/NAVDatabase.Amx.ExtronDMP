@@ -6,6 +6,7 @@ MODULE_NAME='mExtronDMPLevel'	(
 (***********************************************************)
 #include 'NAVFoundation.ModuleBase.axi'
 #include 'NAVFoundation.Math.axi'
+#include 'LibExtronDMP.axi'
 
 /*
  _   _                       _          ___     __
@@ -49,8 +50,6 @@ DEFINE_DEVICE
 DEFINE_CONSTANT
 
 constant long TL_DRIVE = 1
-
-constant integer MAX_OBJECT_TAGS = 5
 
 
 (***********************************************************)

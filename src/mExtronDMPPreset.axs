@@ -5,6 +5,7 @@ MODULE_NAME='mExtronDMPPreset'	(
 
 (***********************************************************)
 #include 'NAVFoundation.ModuleBase.axi'
+#include 'LibExtronDMP.axi'
 
 /*
  _   _                       _          ___     __

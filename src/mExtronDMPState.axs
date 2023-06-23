@@ -5,6 +5,7 @@ MODULE_NAME='mExtronDMPState'	(
 
 (***********************************************************)
 #include 'NAVFoundation.ModuleBase.axi'
+#include 'LibExtronDMP.axi'
 
 /*
  _   _                       _          ___     __
@@ -46,9 +47,8 @@ DEFINE_DEVICE
 (*               CONSTANT DEFINITIONS GO BELOW             *)
 (***********************************************************)
 DEFINE_CONSTANT
-constant long TL_DRIVE = 1
 
-constant integer MAX_OBJECT_TAGS = 5
+constant long TL_DRIVE = 1
 
 
 (***********************************************************)
