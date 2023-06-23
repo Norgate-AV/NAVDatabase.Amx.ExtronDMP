@@ -62,4 +62,24 @@ struct _DspObject {
 }
 
 
+define_function ObjectTagInit(_DspObject object) {
+    switch (upper_case(object.Attribute.Id)) {
+        case 'G': {
+            object.Tag[1] = "'Ds', object.Attribute.Id, format('%01d', atoi(object.Attribute.Value[1])), '*'"
+            object.Tag[2] = "'Ds', object.Attribute.Id, format('%02d' ,atoi(object.Attribute.Value[1])), '*'"
+        }
+        case 'M': {
+            object.Tag[1] = "'Ds', object.Attribute.Id, format('%01d', atoi(object.Attribute.Value[1])), '*'"
+            object.Tag[2] = "'Ds', object.Attribute.Id, format('%02d', atoi(object.Attribute.Value[1])), '*'"
+        }
+        case 'D': {
+            object.Tag[1] = "'Grpm', object.Attribute.Id, format('%01d', atoi(object.Attribute.Value[1])), '*'"
+            object.Tag[2] = "'Grpm', object.Attribute.Id, format('%02d', atoi(object.Attribute.Value[1])), '*'"
+            object.Tag[3] = "'GrpmL', format('%01d', atoi(object.Attribute.Value[1])), '*'"
+            object.Tag[4] = "'GrpmL', format('%02d', atoi(object.Attribute.Value[1])), '*'"
+        }
+    }
+}
+
+
 #END_IF // __LIB_EXTRONDMP__
