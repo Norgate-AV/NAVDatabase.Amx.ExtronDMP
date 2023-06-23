@@ -356,9 +356,6 @@ data_event[vdvObject] {
                         ipAddress = cmdParam[2]
                         NAVTimelineStart(TL_IP_CHECK, ipCheck, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
                     }
-                    case 'USER_NAME': {
-                        userName = cmdParam[2]
-                    }
                     case 'PASSWORD': {
                         password = cmdParam[2]
                     }
