@@ -1,6 +1,6 @@
 MODULE_NAME='mExtronDMPLevel'	(
                                     dev vdvObject,
-                                    dev vdvControl
+                                    dev vdvCommObject
                                 )
 
 (***********************************************************)
@@ -104,8 +104,8 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
 
 define_function SendCommand(char param[]) {
-    NAVLog("'Command to ', NAVStringSurroundWith(NAVDeviceToString(vdvControl), '[', ']'), ': [', param, ']'")
-    send_command vdvControl, "param"
+    NAVLog("'Command to ', NAVStringSurroundWith(NAVDeviceToString(vdvCommObject), '[', ']'), ': [', param, ']'")
+    send_command vdvCommObject, "param"
 }
 
 
@@ -151,7 +151,7 @@ define_function Process() {
         temp = remove_string(rxBuffer, "'>'", 1)
 
         if (length_array(temp)) {
-            NAVLog("'Parsing String From ', NAVStringSurroundWith(NAVDeviceToString(vdvControl), '[', ']'), ': [', temp, ']'")
+            NAVLog("'Parsing String From ', NAVStringSurroundWith(NAVDeviceToString(vdvCommObject), '[', ']'), ': [', temp, ']'")
 
             if (NAVContains(rxBuffer, temp)) { rxBuffer = "''" }
 
@@ -288,7 +288,7 @@ define_function char[NAV_MAX_BUFFER] BuildString(char att[], char index1[], char
 (*                STARTUP CODE GOES BELOW                  *)
 (***********************************************************)
 DEFINE_START {
-    create_buffer vdvControl, rxBuffer
+    create_buffer vdvCommObject, rxBuffer
 }
 
 (***********************************************************)
@@ -296,7 +296,7 @@ DEFINE_START {
 (***********************************************************)
 DEFINE_EVENT
 
-data_event[vdvControl] {
+data_event[vdvCommObject] {
     string: {
         if (!semaphore) {
             Process()
