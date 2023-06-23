@@ -50,7 +50,7 @@ DEFINE_TYPE
 
 struct _DspAttribute {
     char Id[NAV_MAX_CHARS]
-    char Value[MAX_ATTRIBUTE_VALUES][NAV_MAX_CHARS]
+    char Value[MAX_OBJECT_ATTRIBUTE_VALUES][NAV_MAX_CHARS]
 }
 
 struct _DspObject {
