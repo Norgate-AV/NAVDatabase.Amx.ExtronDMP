@@ -83,15 +83,8 @@ volatile long register[]	= { 500 }
 volatile _Object object[MAX_OBJECTS]
 volatile _NAVCredential credential
 
-volatile char ipAddress[15]
-volatile integer ipConnected = false
-volatile integer ipAuthenticated
-
 volatile integer initializing
 volatile integer initializingObjectID
-
-volatile integer initialized
-volatile integer communicating
 
 volatile char objectTag[MAX_OBJECT_TAGS][MAX_OBJECTS][NAV_MAX_CHARS]
 
@@ -173,14 +166,14 @@ define_function InitializeObjects() {
 
         if (x == length_array(vdvCommObjects) && !initializing) {
             initializingObjectID = x
-            initialized = true
+            module.Device.IsInitialized = true
         }
     }
 }
 
 
 define_function NAVDevicePriorityQueueFailedResponseEventCallback(_NAVDevicePriorityQueue queue) {
-    communicating = false
+    module.Device.IsCommunicating = false
 }
 
 
@@ -194,7 +187,7 @@ define_function ReInitializeObjects() {
     stack_var integer x
 
     initializing = false
-    initialized = false
+    module.Device.IsInitialized = false
     initializingObjectID = 1
 
     for (x = 1; x <= length_array(object); x++) {
@@ -210,9 +203,9 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
 
     select {
         active (NAVContains(args.Data, 'Vrb')): {
-            communicating = true
+            module.Device.IsCommunicating = true
 
-            if (!initialized && readyToInitialize) {
+            if (!module.Device.IsInitialized && readyToInitialize) {
                 InitializeObjects()
             }
         }
@@ -242,11 +235,11 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
 
 
 define_function MaintainIPConnection() {
-    if (ipConnected) {
+    if (module.Device.SocketConnection.IsConnected) {
         return
     }
 
-    NAVClientSocketOpen(dvPort.port, ipAddress, NAV_TELNET_PORT, IP_TCP)
+    NAVClientSocketOpen(dvPort.port, module.Device.SocketConnection.Address, NAV_TELNET_PORT, IP_TCP)
 }
 
 
@@ -262,7 +255,7 @@ define_function SendHeartbeat() {
 define_function NAVModulePropertyEventCallback(_NAVModulePropertyEvent event) {
     switch (upper_string(event.Name)) {
         case 'IP_ADDRESS': {
-            ipAddress = event.Args[1]
+            module.Device.SocketConnection.Address = event.Args[1]
             NAVTimelineStart(TL_IP_CHECK, ipCheck, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
         }
         case 'PASSWORD': {
@@ -298,7 +291,7 @@ data_event[dvPort] {
         NAVTimelineStart(TL_HEARTBEAT, heartbeat, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
 
         if (data.device.number == 0) {
-            ipConnected = true
+            module.Device.SocketConnection.IsConnected = true
         }
     }
     string: {
@@ -317,17 +310,17 @@ data_event[dvPort] {
     offline: {
         if (data.device.number == 0) {
             NAVClientSocketClose(dvPort.port)
-            ipConnected = false
-            ipAuthenticated = false
-            communicating = false
+            module.Device.SocketConnection.IsConnected = false
+            module.Device.SocketConnection.IsAuthenticated = false
+            module.Device.IsCommunicating = false
             NAVTimelineStop(TL_HEARTBEAT)
         }
     }
     onerror: {
         if (data.device.number == 0) {
-            // ipConnected = false
-            // ipAuthenticated = false
-            // communicating = false
+            module.Device.SocketConnection.IsConnected = false
+            module.Device.SocketConnection.IsAuthenticated = false
+            module.Device.IsCommunicating = false
         }
     }
 }
@@ -456,9 +449,9 @@ timeline_event[TL_REGISTER] {
 
 
 timeline_event[TL_NAV_FEEDBACK] {
-    [vdvObject, NAV_IP_CONNECTED]	= (ipConnected && ipAuthenticated)
-    [vdvObject, DEVICE_COMMUNICATING] = (communicating)
-    [vdvObject, DATA_INITIALIZED] = (initialized)
+    [vdvObject, NAV_IP_CONNECTED]	= (module.Device.SocketConnection.IsConnected && module.Device.SocketConnection.IsAuthenticated)
+    [vdvObject, DEVICE_COMMUNICATING] = (module.Device.IsCommunicating)
+    [vdvObject, DATA_INITIALIZED] = (module.Device.IsInitialized)
 }
 
 
