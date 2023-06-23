@@ -48,14 +48,10 @@ DEFINE_DEVICE
 (*               CONSTANT DEFINITIONS GO BELOW             *)
 (***********************************************************)
 DEFINE_CONSTANT
-constant integer LEVEL_VOLUME = 1
-
-constant integer ADDRESS_LEVEL_PERCENTAGE	= 1
 
 constant integer LOCK_TOGGLE	= 301
 constant integer LOCK_ON	= 302
 constant integer LOCK_OFF	= 303
-constant integer LEVEL_TOUCH	= 304
 
 
 (***********************************************************)
@@ -67,13 +63,8 @@ DEFINE_TYPE
 (*               VARIABLE DEFINITIONS GO BELOW             *)
 (***********************************************************)
 DEFINE_VARIABLE
+
 volatile integer iLocked
-
-volatile integer iLevelTouched
-volatile sinteger siRequestedLevel = -1
-
-volatile sinteger iLevel
-volatile sinteger iOldLevel
 
 
 (***********************************************************)
@@ -91,22 +82,6 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (***********************************************************)
 (* EXAMPLE: DEFINE_FUNCTION <RETURN_TYPE> <NAME> (<PARAMETERS>) *)
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
-
-define_function Update() {
-    iOldLevel = iLevel
-
-    if (siRequestedLevel >= 0) {
-        if (siRequestedLevel == iLevel) {
-            siRequestedLevel = -1
-        }
-    }
-    else {
-        if (!iLevelTouched) {
-            send_level dvTP, LEVEL_VOLUME, iLevel
-            send_command dvTP, "'^TXT-', itoa(ADDRESS_LEVEL_PERCENTAGE), ',0,', itoa(NAVScaleValue(type_cast(iLevel), 255, 100, 0)), '%'"
-        }
-    }
-}
 
 
 (***********************************************************)
@@ -137,32 +112,7 @@ button_event[dvTP, 0] {
             case LOCK_OFF: {
                 iLocked = false
             }
-            case LEVEL_TOUCH: {
-                iLevelTouched = true
-            }
         }
-    }
-    release: {
-        switch (button.input.channel) {
-            case LEVEL_TOUCH: {
-                iLevelTouched = false
-            }
-        }
-    }
-}
-
-
-level_event[dvTP, LEVEL_VOLUME] {
-    if (iLevelTouched && !iLocked) {
-        siRequestedLevel = level.value
-        send_command dvTP, "'^TXT-', itoa(ADDRESS_LEVEL_PERCENTAGE), ',0,', itoa(NAVScaleValue(type_cast(siRequestedLevel), 255, 100, 0)), '%'"
-    }
-}
-
-
-data_event[dvTP] {
-    online: {
-        Update()
     }
 }
 
