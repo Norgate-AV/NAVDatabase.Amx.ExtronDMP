@@ -162,7 +162,7 @@ button_event[dvTP, 0] {
 }
 
 
-level_event[dvTP,LEVEL_VOLUME] {
+level_event[dvTP, LEVEL_VOLUME] {
     if (iLevelTouched && !iLocked) {
         siRequestedLevel = level.value
         send_command vdvLevelObject, "'VOLUME-', itoa(siRequestedLevel)"
