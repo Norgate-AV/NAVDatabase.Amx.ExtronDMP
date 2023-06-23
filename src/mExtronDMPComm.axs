@@ -7,6 +7,7 @@ MODULE_NAME='mExtronDMPComm'	(
 (***********************************************************)
 #include 'NAVFoundation.ModuleBase.axi'
 #include 'NAVFoundation.SocketUtils.axi'
+#include 'LibExtronDMP.axi'
 
 /*
  _   _                       _          ___     __
@@ -53,11 +54,8 @@ constant long TL_QUEUE_FAILED_RESPONSE	= 2
 constant long TL_HEARTBEAT	= 3
 constant long TL_REGISTER	= 4
 
-
 constant integer MAX_QUEUE_COMMANDS = 50
 constant integer MAX_QUEUE_STATUS = 100
-constant integer MAX_OBJECTS	= 100
-constant integer MAX_OBJECT_TAGS	= 5
 
 constant integer TELNET_WILL	= $FB
 constant integer TELNET_DO	= $FD
