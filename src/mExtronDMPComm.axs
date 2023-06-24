@@ -111,24 +111,28 @@ define_function SendString(char payload[]) {
 define_function NAVDevicePriorityQueueSendNextItemEventCallback(char item[]) {
     stack_var char payload[NAV_MAX_BUFFER]
 
-    payload = GetMess(item)
+    payload = GetObjectMessage(item)
 
     SendString(payload)
 }
 
 
-define_function integer GetMessID(char param[]) {
-    return atoi(NAVGetStringBetween(param, '<', '|'))
+define_function integer GetObjectId(char buffer[]) {
+    if (!NAVContains(buffer, '|')) {
+        return atoi(NAVGetStringBetween(buffer, '<', '>'))
+    }
+
+    return atoi(NAVGetStringBetween(buffer, '<', '|'))
 }
 
 
-define_function integer GetSubscriptionMessID(char param[]) {
-    return atoi(NAVGetStringBetween(param, '[', '*'))
+define_function char[NAV_MAX_BUFFER] GetObjectMessage(char buffer[]) {
+    return NAVGetStringBetween(buffer, '|', '>')
 }
 
 
-define_function char[NAV_MAX_BUFFER] GetMess(char param[]) {
-    return NAVGetStringBetween(param, '|', '>')
+define_function char[NAV_MAX_BUFFER] GetObjectFullMessage(char buffer[]) {
+    return NAVGetStringBetween(buffer, '<', '>')
 }
 
 
@@ -265,16 +269,16 @@ define_function ObjectRegister(integer index, tdata data) {
     stack_var integer id
     stack_var char tagList[NAV_MAX_BUFFER]
 
-    if (!NAVContains(data.text, '|')) {
-        id = atoi(NAVGetStringBetween(data.text, '<', '>'))
-        object[id].IsRegistered = true
+    id = GetObjectId(data.text)
 
+    if (!NAVContains(data.text, '|')) {
+        object[id].IsRegistered = true
         return
     }
 
-    id = atoi(NAVGetStringBetween(data.text, '<', '|'))
-    tagList = NAVGetStringBetween(data.text, '|', '>')
+    tagList = GetObjectMessage(data.text)
     NAVSplitString(tagList, ',', object[id].Tag)
+    set_length_array(object[id].Tag, GetStringArrayLength(object[id].Tag))
 
     object[id].IsRegistered = true
 
@@ -291,7 +295,7 @@ define_function ObjectInitDone(integer index, tdata data) {
 
     initializing = false
 
-    id = atoi(NAVGetStringBetween(data.text, '<', '>'))
+    id = GetObjectId(data.text)
     object[id].IsInitialized = true
 
     InitializeObjects()
@@ -306,7 +310,7 @@ define_function ObjectInitDone(integer index, tdata data) {
 
 
 define_function ObjectResponseOk(tdata data) {
-    if (NAVGetStringBetween(data.text, '<', '>') != NAVGetStringBetween(priorityQueue.LastMessage, '<', '>')) {
+    if (GetObjectFullMessage(data.text) != GetObjectFullMessage(priorityQueue.LastMessage)) {
         return
     }
 
