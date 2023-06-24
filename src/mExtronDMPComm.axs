@@ -390,7 +390,7 @@ data_event[vdvCommObjects] {
                         stack_var integer x
 
                         x = 1
-                        remove_string(data.text, '|',1)
+                        remove_string(data.text, '|', 1)
 
                         while (length_array(data.text) &&  (NAVContains(data.text, ',') || NAVContains(data.text, '>'))) {
                             select {
