@@ -54,6 +54,9 @@ constant char ATTRIBUTE_RESPONSE_HEADER[] = 'Ds'
 constant char ATTRIBUTE_RESPONSE_HEADER_GROUP[] = 'Grpm'
 constant char ATTRIBUTE_RESPONSE_HEADER_GROUP_SOFT_LIMITS[] = "ATTRIBUTE_RESPONSE_HEADER_GROUP, ATTRIBUTE_ID_GROUP_SOFT_LIMITS"
 
+constant sinteger DSP_LEVEL_MAX_LEVEL = 2168
+constant sinteger DSP_LEVEL_MIN_LEVEL = 1048
+
 constant char OBJECT_COMMAND_MESSAGE_HEADER[] = 'COMMAND_MSG'
 constant char OBJECT_RESPONSE_MESSAGE_HEADER[] = 'RESPONSE_MSG'
 constant char OBJECT_QUERY_MESSAGE_HEADER[] = 'POLL_MSG'
@@ -75,6 +78,14 @@ struct _DspObject {
     integer IsRegistered
     _DspAttribute Attribute
     char Tag[MAX_OBJECT_TAGS][NAV_MAX_CHARS]
+}
+
+
+struct _DspLevel {
+    _DspObject Properties
+    _NAVStateSignedInteger Level
+    sinteger MaxLevel
+    sinteger MinLevel
 }
 
 
@@ -115,6 +126,14 @@ define_function ObjectTagInit(_DspObject object) {
 }
 
 
+define_function DspLevelInit(_DspLevel level) {
+    level.Properties.IsInitialized = false
+    level.Properties.IsRegistered = false
+    level.MaxLevel = DSP_LEVEL_MAX_LEVEL
+    level.MinLevel = DSP_LEVEL_MIN_LEVEL
+}
+
+
 define_function integer GetObjectId(char buffer[]) {
     if (!NAVContains(buffer, '|')) {
         return atoi(NAVGetStringBetween(buffer, '<', '>'))
@@ -134,8 +153,28 @@ define_function char[NAV_MAX_BUFFER] GetObjectFullMessage(char buffer[]) {
 }
 
 
+define_function char[NAV_MAX_BUFFER] BuildObjectMessage(char header[], integer id, char payload[]) {
+    if (!length_array(payload)) {
+        return "header, '-<', itoa(id), '>'"
+    }
+
+    return "header, '-<', itoa(id), '|', payload, '>'"
+}
+
+
 define_function char[NAV_MAX_BUFFER] BuildObjectResponseMessage(char data[]) {
     return "OBJECT_RESPONSE_MESSAGE_HEADER, '<', data, '>'"
+}
+
+
+define_function SendObjectMessage(dev device, char payload[]) {
+    NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_TO, device, payload))
+    NAVCommand(device, "payload")
+}
+
+
+define_function char[NAV_MAX_BUFFER] GetObjectTagList(_DspObject object) {
+    return NAVArrayJoinString(object.Tag, ',')
 }
 
 

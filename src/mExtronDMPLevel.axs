@@ -4,6 +4,8 @@ MODULE_NAME='mExtronDMPLevel'	(
                                 )
 
 (***********************************************************)
+#DEFINE USING_NAV_MODULE_BASE_PROPERTY_EVENT_CALLBACK
+#DEFINE USING_NAV_STRING_GATHER_CALLBACK
 #include 'NAVFoundation.ModuleBase.axi'
 #include 'NAVFoundation.Math.axi'
 #include 'LibExtronDMP.axi'
@@ -49,7 +51,7 @@ DEFINE_DEVICE
 (***********************************************************)
 DEFINE_CONSTANT
 
-constant long TL_DRIVE = 1
+constant long TL_LEVEL_RAMP = 1
 
 
 (***********************************************************)
@@ -62,29 +64,14 @@ DEFINE_TYPE
 (***********************************************************)
 DEFINE_VARIABLE
 
-volatile long drive[] = { 500 }
-
-volatile char att[NAV_MAX_CHARS]
-volatile char index[4][NAV_MAX_CHARS]
+volatile long levelRamp[] = { 500 }
 
 volatile char label[NAV_MAX_CHARS]
 
-volatile _NAVVolume volume
+volatile _DspLevel object
 
-volatile sinteger maxLevel = 2168
-volatile sinteger minLevel = 1048
-
-volatile integer isInitialized
-
-volatile integer registered
 volatile integer registerReady
 volatile integer registerRequested
-
-volatile integer id
-volatile char objectTag[MAX_OBJECT_TAGS][NAV_MAX_CHARS]
-
-volatile integer semaphore
-volatile char rxBuffer[NAV_MAX_BUFFER]
 
 
 (***********************************************************)
@@ -103,184 +90,265 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (* EXAMPLE: DEFINE_FUNCTION <RETURN_TYPE> <NAME> (<PARAMETERS>) *)
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
 
-define_function SendCommand(char param[]) {
-    NAVLog("'Command to ', NAVStringSurroundWith(NAVDeviceToString(vdvCommObject), '[', ']'), ': [', param, ']'")
-    NAVCommand(vdvCommObject, "param")
+define_function Register(_DspObject object) {
+    if (!registerRequested || !registerReady || !object.Id) {
+        return
+    }
+
+    ObjectTagInit(object)
+
+    SendObjectMessage(vdvCommObject,
+                        BuildObjectMessage(OBJECT_REGISTRATION_MESSAGE_HEADER,
+                                            object.Id,
+                                            GetObjectTagList(object)))
+
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPLevel => Object Registering: ID-', itoa(object.Id)")
+
+    object.IsRegistered = true
 }
 
 
-define_function BuildCommand(char header[], char cmd[]) {
-    if (length_array(cmd)) {
-        SendCommand("header, '-<', itoa(id), '|', cmd, '>'")
+define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
+    stack_var integer id
+
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_PARSING_STRING_FROM,
+                                                vdvCommObject,
+                                                args.Data))
+
+    if (NAVContains(module.RxBuffer.Data, args.Data)) {
+        module.RxBuffer.Data = "''"
     }
-    else {
-        SendCommand("header, '-<', itoa(id), '>'")
+
+    id = GetObjectId(args.Data)
+    if (id != object.Properties.Id) {
+        return
     }
-}
 
+    select {
+        active (NAVStartsWith(args.Data, OBJECT_REGISTRATION_MESSAGE_HEADER)): {
+            registerRequested = true
+            NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                        "'mExtronDMPLevel => Object Registration Requested: ID-', itoa(object.Properties.Id)")
 
-define_function Register() {
-    registered = true
-
-    switch (att) {
-        case 'G': {	//Standard Level
-            objectTag[1] = "'Ds', att, format('%02d' ,atoi(index[1])), '*'"
-            objectTag[2] = "'Ds', att, format('%01d', atoi(index[1])), '*'"
-            objectTag[3] = ''
-            objectTag[4] = ''
+            Register(object.Properties)
         }
-        case 'D': { 	//Group Level
-            objectTag[1] = "'Grpm', att, format('%02d', atoi(index[1])), '*'"
-            objectTag[2] = "'GrpmL', format('%02d', atoi(index[1])), '*'"
-            objectTag[3] = "'Grpm', att, format('%01d', atoi(index[1])), '*'"
-            objectTag[4] = "'GrpmL', format('%01d', atoi(index[1])), '*'"
+        active (NAVStartsWith(args.Data, OBJECT_INIT_MESSAGE_HEADER)): {
+            object.Properties.IsInitialized = false
+            NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                        "'mExtronDMPLevel => Object Initialization Requested: ID-', itoa(object.Properties.Id)")
+
+            GetInitialized(object.Properties)
         }
-    }
+        active (NAVStartsWith(args.Data, OBJECT_RESPONSE_MESSAGE_HEADER)): {
+            stack_var char response[NAV_MAX_BUFFER]
 
-    if (id) { BuildCommand('REGISTER', "objectTag[1], ',', objectTag[2], ',', objectTag[3], ',', objectTag[4]") }
-    NAVLog("'EXTRON_DMP_REGISTER<', itoa(id), '>'")
-}
+            response = GetObjectFullMessage(args.Data)
 
+            switch (object.Properties.Attribute.Id) {
+                case ATTRIBUTE_ID_GAIN: {
+                    stack_var integer x
 
-define_function Process() {
-    stack_var char temp[NAV_MAX_BUFFER]
+                    for (x = 1; x <= length_array(object.Properties.Tag); x++) {
+                        if (!NAVContains(response, object.Properties.Tag[x])) {
+                            continue
+                        }
 
-    semaphore = true
-
-    while (length_array(rxBuffer) && NAVContains(rxBuffer, '>')) {
-        temp = remove_string(rxBuffer, "'>'", 1)
-
-        if (length_array(temp)) {
-            NAVLog("'Parsing String From ', NAVStringSurroundWith(NAVDeviceToString(vdvCommObject), '[', ']'), ': [', temp, ']'")
-
-            if (NAVContains(rxBuffer, temp)) { rxBuffer = "''" }
-
-            select {
-                active (NAVStartsWith(temp, 'REGISTER')): {
-                    id = atoi(NAVGetStringBetween(temp, '<', '>'))
-                    registerRequested = true
-
-                    if (registerReady) {
-                        Register()
+                        GetObjectLevel(response, object.Properties.Tag[x])
                     }
-
-                    NAVLog("'EXTRON_DMP_REGISTER_REQUESTED<', itoa(id), '>'")
                 }
-                active (NAVStartsWith(temp, 'INIT')): {
-                    isInitialized = false
-                    GetInitialized()
-                    NAVLog("'EXTRON_DMP_INIT_REQUESTED<', itoa(id), '>'")
-                }
-                active (NAVStartsWith(temp, 'RESPONSE_MSG')): {
-                    stack_var char responseMess[NAV_MAX_BUFFER]
-                    NAVLog("'Response message: ', temp")
+                case ATTRIBUTE_ID_GROUP: {
+                    stack_var integer x
 
-                    responseMess = NAVGetStringBetween(temp, '<', '>')
+                    for (x = 1; x <= length_array(object.Properties.Tag); x++) {
+                        if (!NAVContains(response, object.Properties.Tag[x])) {
+                            continue
+                        }
 
-                    switch (att) {
-                        case 'G': {
-                            select {
-                                active (NAVContains(responseMess, objectTag[1])): {
-                                    GetLevel(responseMess, objectTag[1])
-                                }
-                                active (NAVContains(responseMess, objectTag[2])): {
-                                    GetLevel(responseMess, objectTag[2])
-                                }
-                            }
+                        if (NAVContains(object.Properties.Tag[x], ATTRIBUTE_RESPONSE_HEADER_GROUP_SOFT_LIMITS)) {
+                            GetObjectLimits(response, object.Properties.Tag[x])
+                            continue
                         }
-                        case 'D': {
-                            select {
-                                active (NAVContains(responseMess, objectTag[1])): {
-                                    GetLevel(responseMess, objectTag[1])
-                                }
-                                active (NAVContains(responseMess, objectTag[2])): {
-                                    GetLimits(responseMess, objectTag[2])
-                                }
-                                active (NAVContains(responseMess, objectTag[3])): {
-                                    GetLevel(responseMess, objectTag[3])
-                                }
-                                active (NAVContains(responseMess, objectTag[4])): {
-                                    GetLimits(responseMess, objectTag[4])
-                                }
-                            }
-                        }
+
+                        GetObjectLevel(response, object.Properties.Tag[x])
                     }
                 }
             }
         }
     }
-
-    semaphore = false
 }
 
 
-define_function GetLevel(char responseMess[], char tag[]) {
-    remove_string(responseMess, "tag", 1)
-    volume.Level.Actual = atoi(responseMess)
-    send_level vdvObject, 1, NAVScaleValue((volume.Level.Actual - minLevel), (maxLevel - minLevel), 255, 0)
+define_function GetObjectLevel(char response[], char tag[]) {
+    remove_string(response, "tag", 1)
 
-    if (!isInitialized) {
-        isInitialized = true
-        BuildCommand('INIT_DONE', '')
-        NAVLog("'EXTRON_DMP_INIT_DONE<', itoa(id), '>'")
+    object.Level.Actual = atoi(response)
+    UpdateObjectLevel(object)
+
+    if (object.Properties.IsInitialized) {
+        return
+    }
+
+    SendObjectMessage(vdvCommObject,
+                        BuildObjectMessage(OBJECT_INIT_DONE_MESSAGE_HEADER,
+                                            object.Properties.Id,
+                                            ''))
+
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                "'mExtronDMPLevel => Object Initialization Complete: ID-', itoa(object.Properties.Id)")
+    object.Properties.IsInitialized = true
+}
+
+
+define_function UpdateObjectLevel(_DspLevel object) {
+    send_level vdvObject,
+                VOL_LVL,
+                NAVScaleValue((object.Level.Actual - object.MinLevel),
+                                (object.MaxLevel - object.MinLevel),
+                                255,
+                                0)
+}
+
+
+define_function GetObjectLimits(char response[], char tag[]) {
+    remove_string(response, "tag", 1)
+
+    object.MaxLevel = atoi(NAVStripCharsFromRight(remove_string(response, '*', 1), 1))
+    object.MinLevel = atoi(response)
+
+    UpdateObjectLevel(object)
+}
+
+
+define_function GetInitialized(_DspObject object) {
+    switch (object.Attribute.Id) {
+        case ATTRIBUTE_ID_GAIN: {
+            SendObjectMessage(vdvCommObject,
+                                BuildObjectMessage(OBJECT_QUERY_MESSAGE_HEADER,
+                                                    object.Id,
+                                                    BuildPayload(object, '')))
+        }
+        case ATTRIBUTE_ID_GROUP: {
+            SendObjectMessage(vdvCommObject,
+                                BuildObjectMessage(OBJECT_QUERY_MESSAGE_HEADER,
+                                                    object.Id,
+                                                    BuildCustomPayload('L', object.Attribute.Value[1], '')))
+            SendObjectMessage(vdvCommObject,
+                                BuildObjectMessage(OBJECT_QUERY_MESSAGE_HEADER,
+                                                    object.Id,
+                                                    BuildPayload(object, '')))
+        }
     }
 }
 
 
-define_function GetLimits(char responseMess[], char tag[]) {
-    NAVLog("'EXTRON_DMP_FOUND_SOFT_LIMIT_RESPONSE<', itoa(id), '>'")
-    remove_string(responseMess, "tag", 1)
-
-    maxLevel = atoi(NAVStripCharsFromRight(remove_string(responseMess, '*', 1), 1))
-    NAVLog("'EXTRON_DMP_MAX_LEVEL<', itoa(maxLevel), '>'")
-    minLevel = atoi(responseMess)
-    NAVLog("'EXTRON_DMP_MIN_LEVEL<', itoa(minLevel), '>'")
-
-    send_level vdvObject, 1, NAVScaleValue((volume.Level.Actual - minLevel), (maxLevel - minLevel), 255, 0)
+define_function char[NAV_MAX_BUFFER] BuildPayload(_DspObject object, char value[]) {
+    return BuildCustomPayload(object.Attribute.Id, object.Attribute.Value[1], value)
 }
 
 
-define_function GetInitialized() {
-    switch (att) {
-        case 'G': {	//Standard Level
-            BuildCommand('POLL_MSG', BuildString(att, index[1], ''))
+define_function char[NAV_MAX_BUFFER] BuildCustomPayload(char attributeId[], char attributeValue[], char value[]) {
+    stack_var char payload[NAV_MAX_BUFFER]
+
+    payload = "attributeId, format('%01d', atoi(attributeValue))"
+
+    if (length_array(value)) {
+        payload = "payload, '*', value"
+    }
+
+    switch (attributeId) {
+        case ATTRIBUTE_ID_GAIN: {
+            payload = "payload, 'AU'"
         }
-        case 'D': {	//Group Level
-            BuildCommand('POLL_MSG', BuildString('L', index[1], ''))	//Get Caps First
-            BuildCommand('POLL_MSG', BuildString(att, index[1], ''))
+        case ATTRIBUTE_ID_GROUP_SOFT_LIMITS:
+        case ATTRIBUTE_ID_GROUP: {
+            payload = "payload, 'GRPM'"
+        }
+    }
+
+    return "NAV_ESC, payload, NAV_CR"
+}
+
+
+define_function NAVModulePropertyEventCallback(_NAVModulePropertyEvent event) {
+    switch (upper_string(event.Name)) {
+        case 'ATTRIBUTE': {
+            object.Properties.Attribute.Id = event.Args[1]
+        }
+        case 'INDEX_1': {
+            object.Properties.Attribute.Value[1] = event.Args[1]
+        }
+        case 'INDEX_2': {
+            object.Properties.Attribute.Value[2] = event.Args[1]
+        }
+        case 'INDEX_3': {
+            object.Properties.Attribute.Value[3] = event.Args[1]
+        }
+        case 'INDEX_4': {
+            object.Properties.Attribute.Value[4] = event.Args[1]
+        }
+        case 'MAX_LEVEL': {
+            if (length_array(event.Args[1])) {
+                object.MaxLevel = atoi(event.Args[1]) * 10
+            }
+        }
+        case 'MIN_LEVEL': {
+            if (length_array(event.Args[1])) {
+                object.MinLevel = atoi(event.Args[1]) * 10
+            }
+        }
+        case 'LABEL': {
+            label = event.Args[1]
         }
     }
 }
 
 
-define_function Poll() {
-    switch (att) {
-        case 'G': {	// Standard Level
-            BuildCommand('POLL_MSG', BuildString(att, index[1], ''))
+define_function RampLevel() {
+    select {
+        active ([vdvObject, VOL_UP]): {
+            if (object.Properties.Attribute.Id == ATTRIBUTE_ID_GAIN) {
+                SendObjectMessage(vdvCommObject,
+                                    BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                        object.Properties.Id,
+                                                        BuildPayload(object.Properties, itoa(object.Level.Actual + 10))))
+                return
+            }
+
+            SendObjectMessage(vdvCommObject,
+                                BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                    object.Properties.Id,
+                                                    BuildPayload(object.Properties, '10+')))
         }
-        case 'D': {	// Group Level
-            BuildCommand('POLL_MSG', BuildString('L', index[1], ''))	//Get Caps First
-            BuildCommand('POLL_MSG', BuildString(att, index[1], ''))
+        active ([vdvObject, VOL_DN]): {
+            if (object.Properties.Attribute.Id == ATTRIBUTE_ID_GAIN) {
+                SendObjectMessage(vdvCommObject,
+                                    BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                        object.Properties.Id,
+                                                        BuildPayload(object.Properties, itoa(object.Level.Actual - 10))))
+                return
+            }
+
+            SendObjectMessage(vdvCommObject,
+                                BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                    object.Properties.Id,
+                                                    BuildPayload(object.Properties, '10-')))
         }
     }
 }
 
 
-define_function char[NAV_MAX_BUFFER] BuildString(char att[], char index1[], char val[]) {
-    stack_var char temp[NAV_MAX_BUFFER]
+define_function ObjectChannelEvent(integer channel) {
+    switch (channel) {
+        case VOL_UP:
+        case VOL_DN: {
+            if (!object.Properties.IsInitialized) {
+                return
+            }
 
-    if (length_array(att)) { temp = "NAV_ESC, att" }
-    if (length_array(index1)) { temp = "temp, format('%01d', atoi(index1))" }
-    if (length_array(val)) { temp = "temp, '*', val" }
-
-    switch (att) {
-        case 'G': { temp = "temp, 'AU'" }
-        case 'L':
-        case 'D': { temp = "temp, 'GRPM'" }
+            NAVTimelineStart(TL_LEVEL_RAMP, levelRamp, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
+        }
     }
-
-    temp = "temp, NAV_CR"
-    return temp
 }
 
 
@@ -288,7 +356,8 @@ define_function char[NAV_MAX_BUFFER] BuildString(char att[], char index1[], char
 (*                STARTUP CODE GOES BELOW                  *)
 (***********************************************************)
 DEFINE_START {
-    create_buffer vdvCommObject, rxBuffer
+    create_buffer vdvCommObject, module.RxBuffer.Data
+    DspLevelInit(object)
 }
 
 (***********************************************************)
@@ -298,9 +367,7 @@ DEFINE_EVENT
 
 data_event[vdvCommObject] {
     string: {
-        if (!semaphore) {
-            Process()
-        }
+        NAVStringGather(module.RxBuffer, '>')
     }
 }
 
@@ -310,53 +377,19 @@ data_event[vdvObject] {
 
     }
     command: {
-        stack_var char cmdHeader[NAV_MAX_CHARS]
-        stack_var char cmdParam[2][NAV_MAX_CHARS]
+        stack_var _NAVSnapiMessage message
 
-        NAVLog("'Command from ', NAVStringSurroundWith(NAVDeviceToString(data.device), '[', ']'), ': [', data.text, ']'")
+        NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM, data.device, data.text))
 
-        cmdHeader = DuetParseCmdHeader(data.text)
-        cmdParam[1] = DuetParseCmdParam(data.text)
-        cmdParam[2] = DuetParseCmdParam(data.text)
+        NAVParseSnapiMessage(data.text, message)
 
-        switch (cmdHeader) {
-            case 'PROPERTY': {
-                switch (cmdParam[1]) {
-                    case 'ATTRIBUTE': {
-                        att = cmdParam[2]
-                    }
-                    case 'INDEX_1': {
-                        index[1] = cmdParam[2]
-                    }
-                    case 'INDEX_2': {
-                        index[2] = cmdParam[2]
-                    }
-                    case 'INDEX_3': {
-                        index[3] = cmdParam[2]
-                    }
-                    case 'INDEX_4': {
-                        index[4] = cmdParam[2]
-                    }
-                    case 'MAX_LEVEL': {
-                        if (length_array(cmdParam[2])) {
-                            maxLevel = atoi(cmdParam[2]) * 10
-                        }
-                    }
-                    case 'MIN_LEVEL': {
-                        if (length_array(cmdParam[2])) {
-                            minLevel = atoi(cmdParam[2]) * 10
-                        }
-                    }
-                    case 'LABEL': {
-                        label = cmdParam[2]
-                    }
-                }
-            }
+        switch (message.Header) {
             case 'REGISTER': {
+                object.Properties.Id = GetObjectId(message.Parameter[1])
+
                 registerReady = true
-                if (registerRequested) {
-                    Register()
-                }
+
+                Register(object.Properties)
             }
             case '?LABEL': {
                 if (length_array(label)) {
@@ -364,52 +397,75 @@ data_event[vdvObject] {
                 }
             }
             case 'INIT': {
-                GetInitialized()
+                GetInitialized(object.Properties)
             }
             case 'VOLUME': {
-                switch (cmdParam[1]) {
+                if (!object.Properties.IsInitialized) {
+                    break
+                }
+
+                switch (message.Parameter[1]) {
                     case 'QUARTER': {
-                        if (isInitialized) {
-                            BuildCommand('COMMAND_MSG', BuildString(att, index[1], itoa(NAVQuarterPointOfRange(maxLevel, minLevel))))
-                        }
+                        SendObjectMessage(vdvCommObject,
+                                            BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                                object.Properties.Id,
+                                                                BuildPayload(object.Properties,
+                                                                            itoa(NAVQuarterPointOfRange(object.MaxLevel, object.MinLevel)))))
                     }
                     case 'HALF': {
-                        if (isInitialized) {
-                            BuildCommand('COMMAND_MSG', BuildString(att, index[1], itoa(NAVHalfPointOfRange(maxLevel, minLevel))))
-                        }
+                        SendObjectMessage(vdvCommObject,
+                                            BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                                object.Properties.Id,
+                                                                BuildPayload(object.Properties,
+                                                                            itoa(NAVHalfPointOfRange(object.MaxLevel, object.MinLevel)))))
                     }
                     case 'THREE_QUARTERS': {
-                        if (isInitialized) {
-                            BuildCommand('COMMAND_MSG' ,BuildString(att, index[1], itoa(NAVThreeQuarterPointOfRange(maxLevel, minLevel))))
-                        }
+                        SendObjectMessage(vdvCommObject,
+                                            BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                                object.Properties.Id,
+                                                                BuildPayload(object.Properties,
+                                                                            itoa(NAVThreeQuarterPointOfRange(object.MaxLevel, object.MinLevel)))))
                     }
                     case 'FULL': {
-                        if (isInitialized) {
-                            BuildCommand('COMMAND_MSG', BuildString(att, index[1], itoa(maxLevel)))
-                        }
+                        SendObjectMessage(vdvCommObject,
+                                            BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                                object.Properties.Id,
+                                                                BuildPayload(object.Properties, itoa(object.MaxLevel))))
                     }
                     case 'INC': {
-                        if (volume.Level.Actual < maxLevel && isInitialized) {
-                            BuildCommand('COMMAND_MSG', BuildString(att, index[1], itoa(volume.Level.Actual + 10)))
+                        if (object.Level.Actual < object.MaxLevel) {
+                            SendObjectMessage(vdvCommObject,
+                                                BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                                    object.Properties.Id,
+                                                                    BuildPayload(object.Properties, itoa(object.Level.Actual + 10))))
                         }
                     }
                     case 'DEC': {
-                        if (volume.Level.Actual > minLevel && isInitialized) {
-                            BuildCommand('COMMAND_MSG', BuildString(att, index[1], itoa(volume.Level.Actual - 10)))
+                        if (object.Level.Actual > object.MinLevel) {
+                            SendObjectMessage(vdvCommObject,
+                                                BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                                    object.Properties.Id,
+                                                                    BuildPayload(object.Properties, itoa(object.Level.Actual - 10))))
                         }
                     }
                     case 'ABS': {
-                        if ((atoi(cmdParam[2]) >= minLevel) && (atoi(cmdParam[2]) <= maxLevel) && isInitialized) {
-                            BuildCommand('COMMAND_MSG', BuildString(att, index[1], cmdParam[2]))
+                        if ((atoi(message.Parameter[2]) >= object.MinLevel) && (atoi(message.Parameter[2]) <= object.MinLevel)) {
+                            SendObjectMessage(vdvCommObject,
+                                                BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                                    object.Properties.Id,
+                                                                    BuildPayload(object.Properties, message.Parameter[2])))
                         }
                     }
                     default: {
                         stack_var sinteger level
 
-                        level = NAVScaleValue(atoi(cmdParam[1]), 255,(maxLevel - minLevel), minLevel)
+                        level = NAVScaleValue(atoi(message.Parameter[1]), 255, (object.MinLevel - object.MinLevel), object.MinLevel)
 
-                        if ((level >= minLevel) && (level <= maxLevel) && isInitialized) {
-                            BuildCommand('COMMAND_MSG', BuildString(att, index[1], itoa(level)))
+                        if ((level >= object.MinLevel) && (level <= object.MinLevel)) {
+                            SendObjectMessage(vdvCommObject,
+                                                BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                                    object.Properties.Id,
+                                                                    BuildPayload(object.Properties, itoa(level))))
                         }
                     }
                 }
@@ -421,44 +477,16 @@ data_event[vdvObject] {
 
 channel_event[vdvObject, 0] {
     on: {
-        switch (channel.channel) {
-            case VOL_UP: {
-                if (isInitialized) {
-                    NAVTimelineStart(TL_DRIVE, drive, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
-                }
-            }
-            case VOL_DN: {
-                if (isInitialized) {
-                    NAVTimelineStart(TL_DRIVE, drive, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
-                }
-            }
-        }
+        ObjectChannelEvent(channel.channel)
     }
     off: {
-        NAVTimelineStop(TL_DRIVE)
+        NAVTimelineStop(TL_LEVEL_RAMP)
     }
 }
 
 
-timeline_event[TL_DRIVE] {
-    select {
-        active ([vdvObject, VOL_UP]): {
-            if (NAVContains(att, 'G')) {
-                BuildCommand('COMMAND_MSG', BuildString(att, index[1], itoa(volume.Level.Actual + 10)))
-            }
-            else {
-                BuildCommand('COMMAND_MSG', BuildString(att, index[1], '10+'))
-            }
-        }
-        active ([vdvObject, VOL_DN]): {
-            if (NAVContains(att, 'G')) {
-                BuildCommand('COMMAND_MSG', BuildString(att, index[1], itoa(volume.Level.Actual - 10)))
-            }
-            else {
-                BuildCommand('COMMAND_MSG', BuildString(att, index[1], '10-'))
-            }
-        }
-    }
+timeline_event[TL_LEVEL_RAMP] {
+    RampLevel()
 }
 
 
