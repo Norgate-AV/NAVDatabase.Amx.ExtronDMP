@@ -329,6 +329,15 @@ define_function ObjectInitDone(tdata data) {
 }
 
 
+define_function ObjectResponseOk(tdata data) {
+    if (NAVGetStringBetween(data.text, '<', '>') != NAVGetStringBetween(priorityQueue.LastMessage, '<', '>')) {
+        return
+    }
+
+    NAVDevicePriorityQueueGoodResponse(priorityQueue)
+}
+
+
 (***********************************************************)
 (*                STARTUP CODE GOES BELOW                  *)
 (***********************************************************)
@@ -424,9 +433,7 @@ data_event[vdvCommObjects] {
                 NAVDevicePriorityQueueEnqueue(priorityQueue, "cmdHeader, data.text", false)
             }
             case 'RESPONSE_OK': {
-                if (NAVGetStringBetween(data.text, '<', '>') == NAVGetStringBetween(priorityQueue.LastMessage, '<', '>')) {
-                    NAVDevicePriorityQueueGoodResponse(priorityQueue)
-                }
+                ObjectResponseOk(data)
             }
             case 'INIT_DONE': {
                 ObjectInitDone(data)
