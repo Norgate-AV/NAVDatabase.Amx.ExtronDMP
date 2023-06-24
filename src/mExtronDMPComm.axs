@@ -58,6 +58,13 @@ DEFINE_CONSTANT
 constant long TL_IP_CHECK   = 1
 constant long TL_HEARTBEAT	= 2
 
+constant char HEARTBEAT_COMMAND[] = "NAV_ESC, '3CV', NAV_CR"
+constant char HEARTBEAT_RESPONSE_HEADER[] = 'Vrb'
+
+constant char PASSWORD_PROMPT[] = 'Password:'
+
+constant char DEVICE_DELIMITER[] = "NAV_CR, NAV_LF"
+
 
 (***********************************************************)
 (*              DATA TYPE DEFINITIONS GO BELOW             *)
@@ -136,6 +143,11 @@ define_function char[NAV_MAX_BUFFER] GetObjectFullMessage(char buffer[]) {
 }
 
 
+define_function char[NAV_MAX_BUFFER] BuildObjectResponseMessage(char data[]) {
+    return "'RESPONSE_MSG<', data, '>'"
+}
+
+
 define_function InitializeObjects() {
     stack_var integer x
 
@@ -150,7 +162,7 @@ define_function InitializeObjects() {
     for (x = 1; x <= length_array(vdvCommObjects); x++) {
         if (object[x].IsRegistered && !object[x].IsInitialized) {
             initializing = true
-            send_string vdvCommObjects[x], "'INIT<', itoa(x), '>'"
+            SendObjectInitRequest(x)
             initializingObjectID = x
 
             break
@@ -187,13 +199,31 @@ define_function ReInitializeObjects() {
 }
 
 
+define_function SendObjectRegistrationRequest(integer id) {
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'EXTRON_DMP_SENDING_REGISTRATION_MSG<', itoa(id), '>'")
+    send_string vdvCommObjects[id], "'REGISTER<', itoa(id), '>'"
+}
+
+
+define_function SendObjectResponse(integer id, char data[]) {
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'EXTRON_DMP_SENDING_RESPONSE_MSG<', data, '|', itoa(id), '>'")
+    send_string vdvCommObjects[id], "BuildObjectResponseMessage(data)"
+}
+
+
+define_function SendObjectInitRequest(integer id) {
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'EXTRON_DMP_SENDING_INIT_MSG<', itoa(id), '>'")
+    send_string vdvCommObjects[id], "'INIT<', itoa(id), '>'"
+}
+
+
 define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
     NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_PARSING_STRING_FROM, dvPort, args.Data))
 
     args.Data = NAVStripCharsFromRight(args.Data, 2)
 
     select {
-        active (NAVContains(args.Data, 'Vrb')): {
+        active (NAVContains(args.Data, HEARTBEAT_RESPONSE_HEADER)): {
             module.Device.IsCommunicating = true
             InitializeObjects()
         }
@@ -202,13 +232,12 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
             stack_var integer z
 
             for (x = 1; x <= length_array(vdvCommObjects); x++) {
-                for (z = 1; z <= MAX_OBJECT_TAGS; z++) {
+                for (z = 1; z <= length_array(object[x].Tag); z++) {
                     if (!NAVContains(args.Data, object[x].Tag[z])) {
                         continue
                     }
 
-                    send_string vdvCommObjects[x], "'RESPONSE_MSG<', args.Data, '>'"
-                    NAVLog("'EXTRON_DMP_SENDING_RESPONSE_MSG<', args.Data, '|', itoa(x), '>'")
+                    SendObjectResponse(x, args.Data)
 
                     break
                 }
@@ -223,14 +252,14 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
 
 
 define_function Process(_NAVRxBuffer buffer) {
-    if (NAVContains(buffer.Data, "'Password:'")) {
+    if (NAVContains(buffer.Data, PASSWORD_PROMPT)) {
         buffer.Data = "''"
         SendString("credential.Password, NAV_CR, NAV_LF")
 
         return
     }
 
-    NAVStringGather(buffer, "NAV_LF")
+    NAVStringGather(buffer, DEVICE_DELIMITER)
 }
 
 
@@ -248,7 +277,7 @@ define_function SendHeartbeat() {
         return
     }
 
-    NAVDevicePriorityQueueEnqueue(priorityQueue, "'POLL_MSG<HEARTBEAT|', NAV_ESC, '3CV', NAV_CR, '>'", false)
+    NAVDevicePriorityQueueEnqueue(priorityQueue, "'POLL_MSG<HEARTBEAT|', HEARTBEAT_COMMAND, '>'", false)
 }
 
 
@@ -384,8 +413,7 @@ data_event[vdvObject] {
                 stack_var integer x
 
                 for (x = 1; x <= length_array(vdvCommObjects); x++) {
-                    send_string vdvCommObjects[x], "'REGISTER<', itoa(x), '>'"
-                    NAVLog("'EXTRON_DMP_REGISTER_SENT<', itoa(x), '>'")
+                    SendObjectRegistrationRequest(x)
                 }
             }
         }
@@ -395,8 +423,7 @@ data_event[vdvObject] {
 
 data_event[vdvCommObjects] {
     online: {
-        send_string data.device, "'REGISTER<', itoa(get_last(vdvCommObjects)), '>'"
-        NAVLog("'EXTRON_DMP_REGISTER<', itoa(get_last(vdvCommObjects)), '>'")
+        SendObjectRegistrationRequest(get_last(vdvCommObjects))
     }
     command: {
         stack_var char cmdHeader[NAV_MAX_CHARS]
