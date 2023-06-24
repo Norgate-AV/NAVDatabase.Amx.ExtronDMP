@@ -151,6 +151,10 @@ define_function char[NAV_MAX_BUFFER] GetMess(char param[]) {
 define_function InitializeObjects() {
     stack_var integer x
 
+    if (module.Device.IsInitialized || !readyToInitialize) {
+        return
+    }
+
     if (initializing) {
         return
     }
@@ -204,10 +208,7 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
     select {
         active (NAVContains(args.Data, 'Vrb')): {
             module.Device.IsCommunicating = true
-
-            if (!module.Device.IsInitialized && readyToInitialize) {
-                InitializeObjects()
-            }
+            InitializeObjects()
         }
         active (true): {
             stack_var integer x
