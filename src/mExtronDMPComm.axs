@@ -57,7 +57,6 @@ DEFINE_CONSTANT
 
 constant long TL_IP_CHECK = 1
 constant long TL_HEARTBEAT	= 3
-constant long TL_REGISTER	= 4
 
 
 (***********************************************************)
@@ -78,7 +77,6 @@ DEFINE_VARIABLE
 
 volatile long heartbeat[] = { 30000 }
 volatile long ipCheck[] = { 3000 }
-volatile long register[]	= { 500 }
 
 volatile _Object object[MAX_OBJECTS]
 volatile _NAVCredential credential
@@ -87,12 +85,6 @@ volatile integer initializing
 volatile integer initializingObjectID
 
 volatile char objectTag[MAX_OBJECT_TAGS][MAX_OBJECTS][NAV_MAX_CHARS]
-
-volatile integer delayedRegisterRequired[MAX_OBJECTS]
-
-volatile integer registering
-volatile integer registeringObjectID
-volatile integer allRegistered
 
 volatile integer readyToInitialize
 
@@ -183,7 +175,6 @@ define_function NAVDevicePriorityQueueFailedResponseEventCallback(_NAVDevicePrio
 
 define_function Reset() {
     ReInitializeObjects()
-    // InitializeQueue()
 }
 
 
@@ -437,20 +428,6 @@ timeline_event[TL_HEARTBEAT] { SendHeartbeat() }
 
 
 timeline_event[TL_IP_CHECK] { MaintainIPConnection() }
-
-
-timeline_event[TL_REGISTER] {
-    stack_var integer x
-
-    x = type_cast(timeline.repetition + 1)
-    send_string vdvCommObjects[x], "'REGISTER<', itoa(x), '>'"
-
-    NAVLog("'EXTRON_DMP_REGISTER_SENT<', itoa(x), '>'")
-
-    if (x == length_array(vdvCommObjects)) {
-        NAVTimelineStop(timeline.id)
-    }
-}
 
 
 timeline_event[TL_NAV_FEEDBACK] {
