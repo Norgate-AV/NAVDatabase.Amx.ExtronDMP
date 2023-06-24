@@ -252,7 +252,7 @@ define_function MaintainIPConnection() {
         return
     }
 
-    NAVClientSocketOpen(dvPort.port, module.Device.SocketConnection.Address, NAV_TELNET_PORT, IP_TCP)
+    NAVClientSocketOpen(dvPort.PORT, module.Device.SocketConnection.Address, NAV_TELNET_PORT, IP_TCP)
 }
 
 
@@ -314,7 +314,7 @@ data_event[dvPort] {
     }
     offline: {
         if (data.device.number == 0) {
-            NAVClientSocketClose(dvPort.port)
+            NAVClientSocketClose(data.device.port)
             module.Device.SocketConnection.IsConnected = false
             module.Device.SocketConnection.IsAuthenticated = false
             module.Device.IsCommunicating = false
