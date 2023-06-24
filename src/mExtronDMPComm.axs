@@ -124,30 +124,6 @@ define_function NAVDevicePriorityQueueSendNextItemEventCallback(char item[]) {
 }
 
 
-define_function integer GetObjectId(char buffer[]) {
-    if (!NAVContains(buffer, '|')) {
-        return atoi(NAVGetStringBetween(buffer, '<', '>'))
-    }
-
-    return atoi(NAVGetStringBetween(buffer, '<', '|'))
-}
-
-
-define_function char[NAV_MAX_BUFFER] GetObjectMessage(char buffer[]) {
-    return NAVGetStringBetween(buffer, '|', '>')
-}
-
-
-define_function char[NAV_MAX_BUFFER] GetObjectFullMessage(char buffer[]) {
-    return NAVGetStringBetween(buffer, '<', '>')
-}
-
-
-define_function char[NAV_MAX_BUFFER] BuildObjectResponseMessage(char data[]) {
-    return "'RESPONSE_MSG<', data, '>'"
-}
-
-
 define_function InitializeObjects() {
     stack_var integer x
 

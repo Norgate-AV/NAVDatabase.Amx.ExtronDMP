@@ -48,10 +48,18 @@ constant integer MAX_OBJECT_ATTRIBUTE_VALUES = 10
 constant char ATTRIBUTE_ID_GAIN[] = 'G'
 constant char ATTRIBUTE_ID_MUTE[] = 'M'
 constant char ATTRIBUTE_ID_GROUP[] = 'D'
+constant char ATTRIBUTE_ID_GROUP_SOFT_LIMITS[] = 'L'
 
 constant char ATTRIBUTE_RESPONSE_HEADER[] = 'Ds'
 constant char ATTRIBUTE_RESPONSE_HEADER_GROUP[] = 'Grpm'
-constant char ATTRIBUTE_RESPONSE_HEADER_GROUP_SOFT_LIMITS[] = "ATTRIBUTE_RESPONSE_HEADER_GROUP, 'L'"
+constant char ATTRIBUTE_RESPONSE_HEADER_GROUP_SOFT_LIMITS[] = "ATTRIBUTE_RESPONSE_HEADER_GROUP, ATTRIBUTE_ID_GROUP_SOFT_LIMITS"
+
+constant char OBJECT_COMMAND_MESSAGE_HEADER[] = 'COMMAND_MSG'
+constant char OBJECT_RESPONSE_MESSAGE_HEADER[] = 'RESPONSE_MSG'
+constant char OBJECT_QUERY_MESSAGE_HEADER[] = 'POLL_MSG'
+constant char OBJECT_INIT_MESSAGE_HEADER[] = 'INIT'
+constant char OBJECT_INIT_DONE_MESSAGE_HEADER[] = 'INIT_DONE'
+constant char OBJECT_REGISTRATION_MESSAGE_HEADER[] = 'REGISTER'
 
 
 DEFINE_TYPE
@@ -104,6 +112,30 @@ define_function ObjectTagInit(_DspObject object) {
     }
 
     set_length_array(object.Tag, GetStringArrayLength(object.Tag))
+}
+
+
+define_function integer GetObjectId(char buffer[]) {
+    if (!NAVContains(buffer, '|')) {
+        return atoi(NAVGetStringBetween(buffer, '<', '>'))
+    }
+
+    return atoi(NAVGetStringBetween(buffer, '<', '|'))
+}
+
+
+define_function char[NAV_MAX_BUFFER] GetObjectMessage(char buffer[]) {
+    return NAVGetStringBetween(buffer, '|', '>')
+}
+
+
+define_function char[NAV_MAX_BUFFER] GetObjectFullMessage(char buffer[]) {
+    return NAVGetStringBetween(buffer, '<', '>')
+}
+
+
+define_function char[NAV_MAX_BUFFER] BuildObjectResponseMessage(char data[]) {
+    return "OBJECT_RESPONSE_MESSAGE_HEADER, '<', data, '>'"
 }
 
 
