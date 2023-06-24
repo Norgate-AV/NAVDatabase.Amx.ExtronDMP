@@ -220,7 +220,7 @@ define_function SendObjectInitRequest(integer id) {
 define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
     NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_PARSING_STRING_FROM, dvPort, args.Data))
 
-    args.Data = NAVStripCharsFromRight(args.Data, 2)
+    args.Data = NAVStripCharsFromRight(args.Data, length_array(args.Delimiter))
 
     select {
         active (NAVContains(args.Data, HEARTBEAT_RESPONSE_HEADER)): {
