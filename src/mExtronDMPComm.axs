@@ -55,20 +55,14 @@ DEFINE_DEVICE
 (***********************************************************)
 DEFINE_CONSTANT
 
-constant long TL_IP_CHECK = 1
-constant long TL_HEARTBEAT	= 3
+constant long TL_IP_CHECK   = 1
+constant long TL_HEARTBEAT	= 2
 
 
 (***********************************************************)
 (*              DATA TYPE DEFINITIONS GO BELOW             *)
 (***********************************************************)
 DEFINE_TYPE
-
-struct _Object {
-    integer Initialized
-    integer Registered
-}
-
 
 (***********************************************************)
 (*               VARIABLE DEFINITIONS GO BELOW             *)
@@ -78,15 +72,13 @@ DEFINE_VARIABLE
 volatile long heartbeat[] = { 30000 }
 volatile long ipCheck[] = { 3000 }
 
-volatile _Object object[MAX_OBJECTS]
+volatile _DspObject object[MAX_OBJECTS]
 volatile _NAVCredential credential
 
 volatile integer initializing
 volatile integer initializingObjectID
 
-volatile char objectTag[MAX_OBJECT_TAGS][MAX_OBJECTS][NAV_MAX_CHARS]
-
-volatile integer readyToInitialize
+volatile integer ready
 
 
 (***********************************************************)
@@ -143,7 +135,7 @@ define_function char[NAV_MAX_BUFFER] GetMess(char param[]) {
 define_function InitializeObjects() {
     stack_var integer x
 
-    if (module.Device.IsInitialized || !readyToInitialize) {
+    if (module.Device.IsInitialized || !ready) {
         return
     }
 
@@ -152,7 +144,7 @@ define_function InitializeObjects() {
     }
 
     for (x = 1; x <= length_array(vdvCommObjects); x++) {
-        if (object[x].Registered && !object[x].Initialized) {
+        if (object[x].IsRegistered && !object[x].IsInitialized) {
             initializing = true
             send_string vdvCommObjects[x], "'INIT<', itoa(x), '>'"
             initializingObjectID = x
@@ -186,7 +178,7 @@ define_function ReInitializeObjects() {
     initializingObjectID = 1
 
     for (x = 1; x <= length_array(object); x++) {
-        object[x].Initialized = false
+        object[x].IsInitialized = false
     }
 }
 
@@ -207,7 +199,7 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
 
             for (x = 1; x <= length_array(vdvCommObjects); x++) {
                 for (z = 1; z <= MAX_OBJECT_TAGS; z++) {
-                    if (!NAVContains(args.Data, objectTag[z][x])) {
+                    if (!NAVContains(args.Data, object[x].Tag[z])) {
                         continue
                     }
 
@@ -266,6 +258,74 @@ define_function NAVModulePropertyEventCallback(_NAVModulePropertyEvent event) {
             credential.Password = event.Args[1]
         }
     }
+}
+
+
+define_function ObjectRegister(tdata data) {
+    stack_var integer index
+    stack_var integer id
+
+    index = get_last(data.device)
+
+    if (NAVContains(data.text, '|')) {
+        id = atoi(NAVGetStringBetween(data.text, '<', '|'))
+
+        if (NAVContains(data.text, ',')) {
+            stack_var integer x
+
+            x = 1
+            remove_string(data.text, '|', 1)
+
+            while (length_array(data.text) && (NAVContains(data.text, ',') || NAVContains(data.text, '>'))) {
+                select {
+                    active (NAVContains(data.text, ',')): {
+                        object[id].Tag[x] = NAVStripCharsFromRight(remove_string(data.text, ',', 1), 1)
+                        x++
+                    }
+                    active (NAVContains(data.text, '>')): {
+                        object[id].Tag[x] = NAVStripCharsFromRight(remove_string(data.text, '>', 1), 1)
+                    }
+                }
+            }
+        }
+        else {
+            object[id].Tag[1] = NAVGetStringBetween(data.text, '|', '>')
+        }
+
+        object[id].IsRegistered = true
+    }
+    else {
+        id = atoi(NAVGetStringBetween(data.text, '<', '>'))
+        object[id].IsRegistered = true
+    }
+
+    if (index < length_array(vdvCommObjects)) {
+        return
+    }
+
+    ready = true
+}
+
+
+define_function ObjectInitDone(tdata data) {
+    stack_var integer index
+    stack_var integer id
+
+    initializing = false
+
+    index = get_last(data.device)
+
+    id = atoi(NAVGetStringBetween(data.text, '<', '>'))
+    object[id].IsInitialized = true
+
+    InitializeObjects()
+
+    if (index < length_array(vdvCommObjects)) {
+        return
+    }
+
+    // We are done!
+    send_string vdvObject, "'INIT_DONE'"
 }
 
 
@@ -351,7 +411,6 @@ data_event[vdvCommObjects] {
     }
     command: {
         stack_var char cmdHeader[NAV_MAX_CHARS]
-        stack_var integer responseObjectMessID
 
         NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM, data.device, data.text))
 
@@ -370,54 +429,10 @@ data_event[vdvCommObjects] {
                 }
             }
             case 'INIT_DONE': {
-                initializing = false
-
-                responseObjectMessID = atoi(NAVGetStringBetween(data.text, '<', '>'))
-                object[responseObjectMessID].Initialized = true
-
-                InitializeObjects()
-
-                if (get_last(vdvCommObjects) == length_array(vdvCommObjects)) {
-                    // Init is Done!
-                    send_string vdvObject, "'INIT_DONE'"
-                }
+                ObjectInitDone(data)
             }
             case 'REGISTER': {
-                if (NAVContains(data.text, '|')) {
-                    responseObjectMessID = atoi(NAVGetStringBetween(data.text, '<', '|'))
-
-                    if (NAVContains(data.text, ',')) {
-                        stack_var integer x
-
-                        x = 1
-                        remove_string(data.text, '|', 1)
-
-                        while (length_array(data.text) &&  (NAVContains(data.text, ',') || NAVContains(data.text, '>'))) {
-                            select {
-                                active (NAVContains(data.text, ',')): {
-                                    objectTag[x][responseObjectMessID] = NAVStripCharsFromRight(remove_string(data.text, ',', 1), 1)
-                                    x++
-                                }
-                                active (NAVContains(data.text, '>')): {
-                                    objectTag[x][responseObjectMessID] = NAVStripCharsFromRight(remove_string(data.text, '>', 1), 1)
-                                }
-                            }
-                        }
-                    }
-                    else {
-                        objectTag[1][responseObjectMessID] = NAVGetStringBetween(data.text, '|', '>')
-                    }
-
-                    object[responseObjectMessID].Registered = true
-                }
-                else {
-                    responseObjectMessID = atoi(NAVGetStringBetween(data.text, '<', '>'))
-                    object[responseObjectMessID].Registered = true
-                }
-
-                if (get_last(vdvCommObjects) == length_array(vdvCommObjects)) {
-                    readyToInitialize = true
-                }
+                ObjectRegister(data)
             }
         }
     }
