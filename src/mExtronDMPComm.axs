@@ -55,8 +55,8 @@ DEFINE_DEVICE
 (***********************************************************)
 DEFINE_CONSTANT
 
-constant long TL_IP_CHECK   = 1
-constant long TL_HEARTBEAT	= 2
+constant long TL_SOCKET_CHECK   = 1
+constant long TL_HEARTBEAT	    = 2
 
 constant char HEARTBEAT_COMMAND[] = "NAV_ESC, '3CV', NAV_CR"
 constant char HEARTBEAT_RESPONSE_HEADER[] = 'Vrb'
@@ -77,7 +77,7 @@ DEFINE_TYPE
 DEFINE_VARIABLE
 
 volatile long heartbeat[] = { 30000 }
-volatile long ipCheck[] = { 3000 }
+volatile long socketCheck[] = { 3000 }
 
 volatile _DspObject object[MAX_OBJECTS]
 volatile _NAVCredential credential
@@ -263,7 +263,7 @@ define_function Process(_NAVRxBuffer buffer) {
 }
 
 
-define_function MaintainIPConnection() {
+define_function MaintainSocketConnection() {
     if (module.Device.SocketConnection.IsConnected) {
         return
     }
@@ -285,7 +285,7 @@ define_function NAVModulePropertyEventCallback(_NAVModulePropertyEvent event) {
     switch (upper_string(event.Name)) {
         case 'IP_ADDRESS': {
             module.Device.SocketConnection.Address = event.Args[1]
-            NAVTimelineStart(TL_IP_CHECK, ipCheck, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
+            NAVTimelineStart(TL_SOCKET_CHECK, socketCheck, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
         }
         case 'PASSWORD': {
             credential.Password = event.Args[1]
@@ -459,7 +459,7 @@ data_event[vdvCommObjects] {
 timeline_event[TL_HEARTBEAT] { SendHeartbeat() }
 
 
-timeline_event[TL_IP_CHECK] { MaintainIPConnection() }
+timeline_event[TL_SOCKET_CHECK] { MaintainSocketConnection() }
 
 
 timeline_event[TL_NAV_FEEDBACK] {
