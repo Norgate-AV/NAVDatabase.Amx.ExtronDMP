@@ -264,41 +264,22 @@ define_function NAVModulePropertyEventCallback(_NAVModulePropertyEvent event) {
 define_function ObjectRegister(tdata data) {
     stack_var integer index
     stack_var integer id
+    stack_var char tagList[NAV_MAX_BUFFER]
 
-    index = get_last(data.device)
-
-    if (NAVContains(data.text, '|')) {
-        id = atoi(NAVGetStringBetween(data.text, '<', '|'))
-
-        if (NAVContains(data.text, ',')) {
-            stack_var integer x
-
-            x = 1
-            remove_string(data.text, '|', 1)
-
-            while (length_array(data.text) && (NAVContains(data.text, ',') || NAVContains(data.text, '>'))) {
-                select {
-                    active (NAVContains(data.text, ',')): {
-                        object[id].Tag[x] = NAVStripCharsFromRight(remove_string(data.text, ',', 1), 1)
-                        x++
-                    }
-                    active (NAVContains(data.text, '>')): {
-                        object[id].Tag[x] = NAVStripCharsFromRight(remove_string(data.text, '>', 1), 1)
-                    }
-                }
-            }
-        }
-        else {
-            object[id].Tag[1] = NAVGetStringBetween(data.text, '|', '>')
-        }
-
-        object[id].IsRegistered = true
-    }
-    else {
+    if (!NAVContains(data.text, '|')) {
         id = atoi(NAVGetStringBetween(data.text, '<', '>'))
         object[id].IsRegistered = true
+
+        return
     }
 
+    id = atoi(NAVGetStringBetween(data.text, '<', '|'))
+    tagList = NAVGetStringBetween(data.text, '|', '>')
+    NAVSplitString(tagList, ',', object[id].Tag)
+
+    object[id].IsRegistered = true
+
+    index = get_last(data.device)
     if (index < length_array(vdvCommObjects)) {
         return
     }
