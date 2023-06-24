@@ -261,8 +261,7 @@ define_function NAVModulePropertyEventCallback(_NAVModulePropertyEvent event) {
 }
 
 
-define_function ObjectRegister(tdata data) {
-    stack_var integer index
+define_function ObjectRegister(integer index, tdata data) {
     stack_var integer id
     stack_var char tagList[NAV_MAX_BUFFER]
 
@@ -279,7 +278,6 @@ define_function ObjectRegister(tdata data) {
 
     object[id].IsRegistered = true
 
-    index = get_last(data.device)
     if (index < length_array(vdvCommObjects)) {
         return
     }
@@ -288,8 +286,7 @@ define_function ObjectRegister(tdata data) {
 }
 
 
-define_function ObjectInitDone(tdata data) {
-    stack_var integer index
+define_function ObjectInitDone(integer index, tdata data) {
     stack_var integer id
 
     initializing = false
@@ -299,7 +296,6 @@ define_function ObjectInitDone(tdata data) {
 
     InitializeObjects()
 
-    index = get_last(data.device)
     if (index < length_array(vdvCommObjects)) {
         return
     }
@@ -400,8 +396,11 @@ data_event[vdvCommObjects] {
     }
     command: {
         stack_var char cmdHeader[NAV_MAX_CHARS]
+        stack_var integer index
 
         NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM, data.device, data.text))
+
+        index = get_last(vdvCommObjects)
 
         cmdHeader = DuetParseCmdHeader(data.text)
 
@@ -416,10 +415,10 @@ data_event[vdvCommObjects] {
                 ObjectResponseOk(data)
             }
             case 'INIT_DONE': {
-                ObjectInitDone(data)
+                ObjectInitDone(index, data)
             }
             case 'REGISTER': {
-                ObjectRegister(data)
+                ObjectRegister(index, data)
             }
         }
     }
