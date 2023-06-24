@@ -76,7 +76,7 @@ DEFINE_TYPE
 (***********************************************************)
 DEFINE_VARIABLE
 
-volatile long heartbeat[] = { 30000 }
+volatile long heartbeat[] = { 20000 }
 volatile long socketCheck[] = { 3000 }
 
 volatile _DspObject object[MAX_OBJECTS]
