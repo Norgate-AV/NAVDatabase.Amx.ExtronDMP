@@ -235,6 +235,18 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
 }
 
 
+define_function Process(_NAVRxBuffer buffer) {
+    if (NAVContains(buffer.Data, "'Password:'")) {
+        buffer.Data = "''"
+        SendString("credential.Password, NAV_CR, NAV_LF")
+
+        return
+    }
+
+    NAVStringGather(buffer, "NAV_LF")
+}
+
+
 define_function MaintainIPConnection() {
     if (module.Device.SocketConnection.IsConnected) {
         return
@@ -298,15 +310,7 @@ data_event[dvPort] {
     string: {
         NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_STRING_FROM, data.device, data.text))
 
-        select {
-            active (NAVContains(module.RxBuffer.Data, "'Password:'")): {
-                module.RxBuffer.Data = "''"
-                SendString("credential.Password, NAV_CR, NAV_LF");
-            }
-            active (true): {
-                NAVStringGather(module.RxBuffer, "NAV_LF")
-            }
-        }
+        Process(module.RxBuffer)
     }
     offline: {
         if (data.device.number == 0) {
