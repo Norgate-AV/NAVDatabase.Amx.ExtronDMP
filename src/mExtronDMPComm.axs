@@ -313,13 +313,12 @@ define_function ObjectInitDone(tdata data) {
 
     initializing = false
 
-    index = get_last(data.device)
-
     id = atoi(NAVGetStringBetween(data.text, '<', '>'))
     object[id].IsInitialized = true
 
     InitializeObjects()
 
+    index = get_last(data.device)
     if (index < length_array(vdvCommObjects)) {
         return
     }
