@@ -126,11 +126,11 @@ define_function ObjectTagInit(_DspObject object) {
 }
 
 
-define_function DspLevelInit(_DspLevel level) {
-    level.Properties.IsInitialized = false
-    level.Properties.IsRegistered = false
-    level.MaxLevel = DSP_LEVEL_MAX_LEVEL
-    level.MinLevel = DSP_LEVEL_MIN_LEVEL
+define_function DspLevelInit(_DspLevel object) {
+    object.Properties.IsInitialized = false
+    object.Properties.IsRegistered = false
+    object.MaxLevel = DSP_LEVEL_MAX_LEVEL
+    object.MinLevel = DSP_LEVEL_MIN_LEVEL
 }
 
 
@@ -175,6 +175,35 @@ define_function SendObjectMessage(dev device, char payload[]) {
 
 define_function char[NAV_MAX_BUFFER] GetObjectTagList(_DspObject object) {
     return NAVArrayJoinString(object.Tag, ',')
+}
+
+
+define_function char[NAV_MAX_BUFFER] BuildPayload(_DspObject object, char value[]) {
+    return BuildCustomPayload(object.Attribute.Id, object.Attribute.Value[1], value)
+}
+
+
+define_function char[NAV_MAX_BUFFER] BuildCustomPayload(char attributeId[], char attributeValue[], char value[]) {
+    stack_var char payload[NAV_MAX_BUFFER]
+
+    payload = "attributeId, format('%01d', atoi(attributeValue))"
+
+    if (length_array(value)) {
+        payload = "payload, '*', value"
+    }
+
+    switch (attributeId) {
+        case ATTRIBUTE_ID_GAIN:
+        case ATTRIBUTE_ID_MUTE: {
+            payload = "payload, 'AU'"
+        }
+        case ATTRIBUTE_ID_GROUP_SOFT_LIMITS:
+        case ATTRIBUTE_ID_GROUP: {
+            payload = "payload, 'GRPM'"
+        }
+    }
+
+    return "NAV_ESC, payload, NAV_CR"
 }
 
 
