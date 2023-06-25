@@ -89,6 +89,12 @@ struct _DspLevel {
 }
 
 
+struct _DspState {
+    _DspObject Properties
+    _NAVStateInteger State
+}
+
+
 define_function integer GetStringArrayLength(char array[][]) {
     stack_var integer x
     stack_var integer max
@@ -131,6 +137,12 @@ define_function DspLevelInit(_DspLevel object) {
     object.Properties.IsRegistered = false
     object.MaxLevel = DSP_LEVEL_MAX_LEVEL
     object.MinLevel = DSP_LEVEL_MIN_LEVEL
+}
+
+
+define_function DspStateInit(_DspState object) {
+    object.Properties.IsInitialized = false
+    object.Properties.IsRegistered = false
 }
 
 
@@ -204,6 +216,11 @@ define_function char[NAV_MAX_BUFFER] BuildCustomPayload(char attributeId[], char
     }
 
     return "NAV_ESC, payload, NAV_CR"
+}
+
+
+define_function integer ObjectIsCrosspointState(_DspObject object) {
+    return NAVStartsWith(object.Attribute.Value[1], '2') && object.Attribute.Id == ATTRIBUTE_ID_MUTE
 }
 
 
