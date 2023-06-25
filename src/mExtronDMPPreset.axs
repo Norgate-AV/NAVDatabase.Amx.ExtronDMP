@@ -4,6 +4,7 @@ MODULE_NAME='mExtronDMPPreset'	(
                                 )
 
 (***********************************************************)
+#DEFINE USING_NAV_STRING_GATHER_CALLBACK
 #include 'NAVFoundation.ModuleBase.axi'
 #include 'LibExtronDMP.axi'
 
@@ -58,16 +59,10 @@ DEFINE_TYPE
 (***********************************************************)
 DEFINE_VARIABLE
 
-volatile integer isInitialized
+volatile _DspObject object
 
-volatile integer registered
-volatile integer registerReady
+volatile integer registerReady = true
 volatile integer registerRequested
-
-volatile integer id
-
-volatile integer semaphore
-volatile char rxBuffer[NAV_MAX_BUFFER]
 
 
 (***********************************************************)
@@ -86,66 +81,70 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (* EXAMPLE: DEFINE_FUNCTION <RETURN_TYPE> <NAME> (<PARAMETERS>) *)
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
 
-define_function SendCommand(char param[]) {
-    NAVLog("'Command to ', NAVStringSurroundWith(NAVDeviceToString(vdvCommObject), '[', ']'), ': [', param, ']'")
-    NAVCommand(vdvCommObject, "param")
-}
-
-
-define_function BuildCommand(char header[], char cmd[]) {
-    if (length_array(cmd)) {
-        SendCommand("header, '-<', itoa(id), '|', cmd, '>'")
+define_function Register(_DspObject object) {
+    if (!registerRequested || !registerReady || !object.Id) {
+        return
     }
-    else {
-        SendCommand("header, '-<', itoa(id), '>'")
+
+    SendObjectMessage(vdvCommObject,
+                        BuildObjectMessage(OBJECT_REGISTRATION_MESSAGE_HEADER,
+                                            object.Id,
+                                            ''))
+
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPPreset => Object Registering: ID-', itoa(object.Id)")
+
+    object.IsRegistered = true
+}
+
+
+define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
+    stack_var integer id
+
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_PARSING_STRING_FROM,
+                                                vdvCommObject,
+                                                args.Data))
+
+    if (NAVContains(module.RxBuffer.Data, args.Data)) {
+        module.RxBuffer.Data = "''"
     }
-}
 
+    id = GetObjectId(args.Data)
+    if (id != object.Id) {
+        return
+    }
 
-define_function Register() {
-    registered = true
-}
+    select {
+        active (NAVStartsWith(args.Data, OBJECT_REGISTRATION_MESSAGE_HEADER)): {
+            registerRequested = true
+            NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                        "'mExtronDMPPreset => Object Registration Requested: ID-', itoa(object.Id)")
 
+            Register(object)
+        }
+        active (NAVStartsWith(args.Data, OBJECT_INIT_MESSAGE_HEADER)): {
+            NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                        "'mExtronDMPState => Object Initialization Requested: ID-', itoa(object.Id)")
 
-define_function Process() {
-    stack_var char temp[NAV_MAX_BUFFER]
-
-    semaphore = true
-
-    while (length_array(rxBuffer) && NAVContains(rxBuffer, '>')) {
-        temp = remove_string(rxBuffer, "'>'", 1)
-
-        if (length_array(temp)) {
-            NAVLog("'Parsing String From ', NAVStringSurroundWith(NAVDeviceToString(vdvCommObject), '[', ']'), ': [', temp, ']'")
-
-            if (NAVContains(rxBuffer, temp)) { rxBuffer = "''" }
-
-            select {
-                active (NAVStartsWith(temp, 'REGISTER')): {
-                    id = atoi(NAVGetStringBetween(temp, '<', '>'))
-
-                    if (id) { BuildCommand('REGISTER', '') }
-
-                    isInitialized = false
-
-                    NAVLog("'EXTRON_DMP_REGISTER_REQUESTED<', itoa(id), '>'")
-                    NAVLog("'EXTRON_DMP_REGISTER<', itoa(id), '>'")
-                }
-                active (NAVStartsWith(temp, 'INIT')): {
-                    isInitialized = true
-                    BuildCommand('INIT_DONE', '')
-                    NAVLog("'EXTRON_DMP_INIT_REQUESTED<', itoa(id), '>'")
-                    NAVLog("'EXTRON_DMP_INIT_DONE<', itoa(id), '>'")
-                }
-                active (NAVStartsWith(temp, 'RESPONSE_MSG')): {
-                    stack_var char responseMess[NAV_MAX_BUFFER]
-                    responseMess = NAVGetStringBetween(temp, '<', '>')
-                }
-            }
+            GetInitialized(object)
+        }
+        active (NAVStartsWith(args.Data, OBJECT_RESPONSE_MESSAGE_HEADER)): {
+            stack_var char response[NAV_MAX_BUFFER]
+            response = GetObjectFullMessage(args.Data)
         }
     }
+}
 
-    semaphore = false
+
+define_function GetInitialized(_DspObject object) {
+    SendObjectMessage(vdvCommObject,
+                        BuildObjectMessage(OBJECT_INIT_DONE_MESSAGE_HEADER,
+                                            object.Id,
+                                            ''))
+
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                "'mExtronDMPPreset => Object Initialization Complete: ID-', itoa(object.Id)")
+    object.IsInitialized = true
 }
 
 
@@ -153,7 +152,7 @@ define_function Process() {
 (*                STARTUP CODE GOES BELOW                  *)
 (***********************************************************)
 DEFINE_START {
-    create_buffer vdvCommObject, rxBuffer
+    create_buffer vdvCommObject, module.RxBuffer.Data
 }
 
 (***********************************************************)
@@ -163,9 +162,7 @@ DEFINE_EVENT
 
 data_event[vdvCommObject] {
     string: {
-        if (!semaphore) {
-            Process()
-        }
+        NAVStringGather(module.RxBuffer, '>')
     }
 }
 
@@ -175,17 +172,15 @@ data_event[vdvObject] {
 
     }
     command: {
-        stack_var char cmdHeader[NAV_MAX_CHARS]
-        stack_var char cmdParam[2][NAV_MAX_CHARS]
+        stack_var _NAVSnapiMessage message
 
         NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM, data.device, data.text))
 
-        cmdHeader = DuetParseCmdHeader(data.text)
-        cmdParam[1] = DuetParseCmdParam(data.text)
+        NAVParseSnapiMessage(data.text, message)
 
-        switch (cmdHeader) {
+        switch (message.Header) {
             case 'PRESET': {
-                BuildCommand('COMMAND_MSG', "cmdParam[1], '.'")
+                BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER, object.Id, "message.Parameter[1], '.'")
             }
         }
     }
@@ -194,7 +189,7 @@ data_event[vdvObject] {
 
 channel_event[vdvObject, 0] {
     on: {
-        BuildCommand('COMMAND_MSG', "itoa(channel.channel), '.'")
+        BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER, object.Id, "itoa(channel.channel), '.'")
     }
 }
 
