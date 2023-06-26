@@ -33,7 +33,7 @@
         "analyze": "size-limit --why"
     },
     "devDependencies": {
-        "@commitlint/cli": "^17.4.4",
+        "@commitlint/cli": "^17.6.6",
         "@commitlint/config-conventional": "^17.4.4",
         "all-contributors-cli": "^6.24.0",
         "cz-conventional-changelog": "3.3.0",
