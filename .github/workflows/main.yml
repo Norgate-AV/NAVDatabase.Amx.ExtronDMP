@@ -20,6 +20,10 @@ jobs:
     runs-on: [self-hosted, windows, server]
 
     steps:
+      - name: Clear Out
+        run: |
+          rmdir $GITHUB_WORKSPACE && mkdir $GITHUB_WORKSPACE
+        
       - name: Checkout
         uses: actions/checkout@v3
         with:
