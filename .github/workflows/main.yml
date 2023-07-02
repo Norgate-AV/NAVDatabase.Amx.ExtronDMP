@@ -22,7 +22,7 @@ jobs:
     steps:
       - name: Clean
         run: |
-          rmdir $env:GITHUB_WORKSPACE && mkdir $env:GITHUB_WORKSPACE
+          rmdir $env:GITHUB_WORKSPACE -Force && mkdir $env:GITHUB_WORKSPACE -Force
         
       - name: Checkout
         uses: actions/checkout@v3
