@@ -17,7 +17,7 @@ jobs:
   setup:
     name: Setup
 
-    runs-on: [self-hosted, windows, server]
+    runs-on: [self-hosted, windows]
 
     steps:  
       - name: Checkout
