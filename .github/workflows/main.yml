@@ -86,7 +86,7 @@ jobs:
       - name: Install (with cache)
         uses: bahmutov/npm-install@v1
         with:
-          install-command: yarn --frozen-lockfile --network-timeout 1000000
+          install-command: pnpm install
 
       - name: Check for genlinx
         run: which genlinx
@@ -99,8 +99,8 @@ jobs:
     needs: [setup]
 
     steps:
-      # - name: Run Genlinx
-      #   run: genlinx build -c
+      - name: Run Genlinx
+        run: ./build.ps1
 
       - name: Upload build log only if failure
         uses: actions/upload-artifact@v3

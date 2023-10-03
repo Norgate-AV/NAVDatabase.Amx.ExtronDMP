@@ -1,5 +1,5 @@
 {
-    "name": "navmodule-amx-extron-dmp",
+    "name": "NAVDatabase.Amx.ExtronDMP",
     "version": "1.0.0",
     "private": true,
     "keywords": [
@@ -11,17 +11,16 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/Norgate-AV-Solutions-Ltd/NAVModule.Amx.ExtronDMP.git"
+        "url": "https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP.git"
     },
     "bugs": {
-        "url": "https://github.com/Norgate-AV-Solutions-Ltd/NAVModule.Amx.ExtronDMP/issues"
+        "url": "https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/issues"
     },
     "engines": {
         "node": ">=14"
     },
     "scripts": {
-        "lint": "echo \"Linting not setup for this project\"",
-        "lint:fix": "echo \"Linting not setup for this project\"",
+        "build": "pwsh ./build.ps1",
         "commit": "git-cz",
         "prepare": "husky install",
         "pretty:fix": "prettier --write .",
@@ -36,12 +35,12 @@
         "@commitlint/cli": "^17.4.4",
         "@commitlint/config-conventional": "^17.4.4",
         "all-contributors-cli": "^6.24.0",
+        "commitizen": "^4.3.0",
         "cz-conventional-changelog": "3.3.0",
         "doctoc": "^2.2.1",
         "husky": "^8.0.3",
-        "lint-staged": "^13.2.2",
-        "prettier": "^2.8.4",
-        "size-limit": "^8.2.4"
-    },
-    "dependencies": {}
+        "lint-staged": "^14.0.1",
+        "prettier": "^3.0.3",
+        "size-limit": "^9.0.0"
+    }
 }
