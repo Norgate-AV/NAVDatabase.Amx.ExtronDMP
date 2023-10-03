@@ -1,18 +1,12 @@
 MODULE_NAME='mExtronDMPComm'	(
-                                    dev vdvObject,
+                                    dev vdvControl,
                                     dev vdvCommObjects[],
                                     dev dvPort
                                 )
 
 (***********************************************************)
-#DEFINE USING_NAV_DEVICE_PRIORITY_QUEUE_SEND_NEXT_ITEM_EVENT_CALLBACK
-#DEFINE USING_NAV_DEVICE_PRIORITY_QUEUE_FAILED_RESPONSE_EVENT_CALLBACK
-#DEFINE USING_NAV_MODULE_BASE_PROPERTY_EVENT_CALLBACK
-#DEFINE USING_NAV_STRING_GATHER_CALLBACK
 #include 'NAVFoundation.ModuleBase.axi'
 #include 'NAVFoundation.SocketUtils.axi'
-#include 'NAVFoundation.DevicePriorityQueue.axi'
-#include 'LibExtronDMP.axi'
 
 /*
  _   _                       _          ___     __
@@ -54,39 +48,83 @@ DEFINE_DEVICE
 (*               CONSTANT DEFINITIONS GO BELOW             *)
 (***********************************************************)
 DEFINE_CONSTANT
+constant long TL_IP_CHECK = 1
+constant long TL_QUEUE_FAILED_RESPONSE	= 2
+constant long TL_HEARTBEAT	= 3
+constant long TL_REGISTER	= 4
 
-constant long TL_SOCKET_CHECK   = 1
-constant long TL_HEARTBEAT	    = 2
 
-constant char HEARTBEAT_COMMAND[] = "NAV_ESC, '3CV', NAV_CR"
-constant char HEARTBEAT_RESPONSE_HEADER[] = 'Vrb'
+constant integer MAX_QUEUE_COMMANDS = 50
+constant integer MAX_QUEUE_STATUS = 100
+constant integer MAX_OBJECTS	= 100
+constant integer MAX_OBJECT_TAGS	= 5
 
-constant char PASSWORD_PROMPT[] = 'Password:'
-
-constant char DEVICE_DELIMITER[] = "{NAV_CR}, {NAV_LF}"
-
+constant integer TELNET_WILL	= $FB
+constant integer TELNET_DO	= $FD
+constant integer TELNET_DONT	= $FE
+constant integer TELNET_WONT	= $FC
 
 (***********************************************************)
 (*              DATA TYPE DEFINITIONS GO BELOW             *)
 (***********************************************************)
 DEFINE_TYPE
+struct _Object {
+    integer iInitialized
+    integer iRegistered
+}
+
+struct _Queue {
+    integer iBusy
+    integer iHasItems
+    integer iCommandHead
+    integer iCommandTail
+    integer iStatusHead
+    integer iStatusTail
+    integer iStrikeCount
+    integer iResendLast
+    char cLastMess[NAV_MAX_BUFFER]
+}
 
 (***********************************************************)
 (*               VARIABLE DEFINITIONS GO BELOW             *)
 (***********************************************************)
 DEFINE_VARIABLE
+volatile long ltHeartbeat[] = { 30000 }
+volatile long ltIPCheck[] = { 3000 }
+volatile long ltQueueFailedResponse[]	= { 2500 }
+volatile long ltRegister[]	= { 500 }
 
-volatile long heartbeat[] = { 20000 }
-volatile long socketCheck[] = { 3000 }
+volatile _Object uObject[MAX_OBJECTS]
 
-volatile _DspObject object[MAX_OBJECTS]
-volatile _NAVCredential credential
+volatile _Queue uQueue
+volatile char cCommandQueue[MAX_QUEUE_COMMANDS][NAV_MAX_BUFFER]
+volatile char cStatusQueue[MAX_QUEUE_STATUS][NAV_MAX_BUFFER]
 
-volatile integer initializing
-volatile integer initializingObjectID
+volatile char cRxBuffer[NAV_MAX_BUFFER]
+volatile integer iSemaphore
 
-volatile integer ready
+volatile char cIPAddress[15]
+volatile integer iIPConnected = false
+volatile integer iIPAuthenticated
 
+volatile integer iInitializing
+volatile integer iInitializingObjectID
+
+volatile integer iInitialized
+volatile integer iCommunicating
+
+volatile char cUserName[NAV_MAX_CHARS] = 'clearone'
+volatile char cPassword[NAV_MAX_CHARS] = 'converge'
+
+volatile char cObjectTag[MAX_OBJECT_TAGS][MAX_OBJECTS][NAV_MAX_CHARS]
+
+volatile integer iDelayedRegisterRequired[MAX_OBJECTS]
+
+volatile integer iRegistering
+volatile integer iRegisteringObjectID
+volatile integer iAllRegistered
+
+volatile integer iReadyToInitialize
 
 (***********************************************************)
 (*               LATCHING DEFINITIONS GO BELOW             *)
@@ -103,353 +141,475 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (***********************************************************)
 (* EXAMPLE: DEFINE_FUNCTION <RETURN_TYPE> <NAME> (<PARAMETERS>) *)
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
-
-define_function SendStringRaw(char payload[]) {
-    NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_STRING_TO, dvPort, payload))
-    send_string dvPort, "payload"
+define_function SendStringRaw(char cString[]) {
+    NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_STRING_TO, dvPort, cString))
+    send_string dvPort,"cString"
 }
 
+define_function SendString(char cString[]) {
 
-define_function SendString(char payload[]) {
-    SendStringRaw("payload")
+    SendStringRaw("cString")
 }
 
+/*
+define_function BuildCommand(char cHeader[], char cCmd[]) {
+    if (length_array(cCmd)) {
+	SendCommand("cHeader,'-<',itoa(iID),'|',cCmd,'>'")
+    }else {
+	SendCommand("cHeader,'-<',itoa(iID),'>'")
+    }
+}
+*/
+/*
+define_function char[NAV_MAX_BUFFER] BuildString(char cInst[], char cCmd[], char cAtt[], char cIndex1[], char cIndex2[], char cVal[]) {
+    stack_var char cTemp[NAV_MAX_BUFFER]
+    if (length_array(cInst)) { cTemp = "cTemp,cInst,' '" }
+    if (length_array(cCmd)) { cTemp = "cTemp,cCmd,' '" }
+    if (length_array(cAtt)) { cTemp = "cTemp,cAtt,' '" }
+    if (length_array(cIndex1)) { cTemp = "cTemp,cIndex1,' '" }
+    if (length_array(cIndex2)) { cTemp = "cTemp,cIndex2,' '" }
+    if (length_array(cVal)) { cTemp = "cTemp,cVal" }
+    if (right_string(cTemp, 1) == ' ') { cTemp = NAVStripCharsFromRight(cTemp, 1) }
+    return cTemp
+}
+*/
+define_function AddToQueue(char cString[], integer iPriority) {
+    stack_var integer iQueueWasEmpty
 
-define_function NAVDevicePriorityQueueSendNextItemEventCallback(char item[]) {
-    stack_var char payload[NAV_MAX_BUFFER]
+    iQueueWasEmpty = (!uQueue.iHasItems && !uQueue.iBusy)
+    switch (iPriority) {
+	case true: {	//Commands have priority over status requests
+	    select {
+		active (uQueue.iCommandHead == max_length_array(cCommandQueue)): {
+		    if (uQueue.iCommandTail <> 1) {
+			uQueue.iCommandHead = 1
+			cCommandQueue[uQueue.iCommandHead] = cString
+			uQueue.iHasItems = true
+		    }
+		}
+		active (uQueue.iCommandTail <> (uQueue.iCommandHead + 1)): {
+		    uQueue.iCommandHead++
+		    cCommandQueue[uQueue.iCommandHead] = cString
+		    uQueue.iHasItems = true
+		}
+	    }
+	}
+	case false: {
+	    select {
+		active (uQueue.iStatusHead == max_length_array(cStatusQueue)): {
+		    if (uQueue.iStatusTail <> 1) {
+			uQueue.iStatusHead = 1
+			cStatusQueue[uQueue.iStatusHead] = cString
+			uQueue.iHasItems = true
+		    }
+		}
+		active (uQueue.iStatusTail <> (uQueue.iStatusHead + 1)): {
+		    uQueue.iStatusHead++
+		    cStatusQueue[uQueue.iStatusHead] = cString
+		    uQueue.iHasItems = true
+		}
+	    }
+	}
+    }
 
-    payload = GetObjectMessage(item)
-
-    SendString(payload)
+    if (iQueueWasEmpty) { SendNextQueueItem(); }
 }
 
+define_function char[NAV_MAX_BUFFER] RemoveFromQueue() {
+
+    if (uQueue.iHasItems && !uQueue.iBusy) {
+	uQueue.iBusy = true
+	select {
+	    active (uQueue.iCommandHead <> uQueue.iCommandTail): {
+		if (uQueue.iCommandTail == max_length_array(cCommandQueue)) {
+		    uQueue.iCommandTail = 1
+		}else {
+		    uQueue.iCommandTail++
+		}
+
+		uQueue.cLastMess = cCommandQueue[uQueue.iCommandTail]
+	    }
+	    active (uQueue.iStatusHead <> uQueue.iStatusTail): {
+		if (uQueue.iStatusTail == max_length_array(cStatusQueue)) {
+		    uQueue.iStatusTail = 1
+		}else {
+		    uQueue.iStatusTail++
+		}
+
+		uQueue.cLastMess = cStatusQueue[uQueue.iStatusTail]
+	    }
+	}
+
+	if ((uQueue.iCommandHead == uQueue.iCommandTail) && (uQueue.iStatusHead == uQueue.iStatusTail)) {
+	    uQueue.iHasItems = false
+	}
+
+
+	return GetMess(uQueue.cLastMess)
+    }
+
+    return ''
+}
+
+define_function integer GetMessID(char cParam[]) {
+    return atoi(NAVGetStringBetween(cParam,'<','|'))
+}
+
+define_function integer GetSubscriptionMessID(char cParam[]) {
+    return atoi(NAVGetStringBetween(cParam,'[','*'))
+}
+
+define_function char[NAV_MAX_BUFFER] GetMess(char cParam[]) {
+
+    return NAVGetStringBetween(cParam,'|','>')
+}
 
 define_function InitializeObjects() {
     stack_var integer x
+    if (!iInitializing) {
+	for (x = 1; x <= length_array(vdvCommObjects); x++) {
+	    if (uObject[x].iRegistered && !uObject[x].iInitialized) {
+		iInitializing = true
+		send_string vdvCommObjects[x],"'INIT<',itoa(x),'>'"
+		iInitializingObjectID = x
+		break
+	    }
 
-    if (module.Device.IsInitialized || !ready) {
-        return
-    }
-
-    if (initializing) {
-        return
-    }
-
-    for (x = 1; x <= length_array(vdvCommObjects); x++) {
-        if (object[x].IsRegistered && !object[x].IsInitialized) {
-            initializing = true
-            SendObjectInitRequest(x)
-            initializingObjectID = x
-
-            break
-        }
-
-        if (x == length_array(vdvCommObjects) && !initializing) {
-            initializingObjectID = x
-            module.Device.IsInitialized = true
-        }
+	    if (x == length_array(vdvCommObjects) && !iInitializing) {
+		iInitializingObjectID = x
+		iInitialized = true
+	    }
+	}
     }
 }
 
+define_function GoodResponse() {
 
-define_function NAVDevicePriorityQueueFailedResponseEventCallback(_NAVDevicePriorityQueue queue) {
-    module.Device.IsCommunicating = false
+    uQueue.iBusy = false
+    NAVTimelineStop(TL_QUEUE_FAILED_RESPONSE)
+
+    uQueue.iStrikeCount = 0
+    uQueue.iResendLast = false
+    SendNextQueueItem()
 }
 
+define_function SendNextQueueItem() {
+    stack_var char cTemp[NAV_MAX_BUFFER]
+
+    if (uQueue.iResendLast) {
+
+	uQueue.iResendLast = false
+	cTemp = GetMess(uQueue.cLastMess)
+    }else {
+
+	cTemp= RemoveFromQueue()
+    }
+
+    if (length_array(cTemp)) {
+
+	SendString(cTemp)
+	timeline_create(TL_QUEUE_FAILED_RESPONSE,ltQueueFailedResponse,length_array(ltQueueFailedResponse),TIMELINE_ABSOLUTE,TIMELINE_ONCE)
+    }
+}
+
+define_event timeline_event[TL_QUEUE_FAILED_RESPONSE] {
+    if (uQueue.iBusy) {
+	if (uQueue.iStrikeCount < 3) {
+	    uQueue.iStrikeCount++
+	    uQueue.iResendLast = true
+	    SendNextQueueItem()
+	}else {
+	    iCommunicating = false
+	    Reset()
+	}
+    }
+}
 
 define_function Reset() {
     ReInitializeObjects()
+    InitializeQueue()
 }
-
 
 define_function ReInitializeObjects() {
     stack_var integer x
-
-    initializing = false
-    module.Device.IsInitialized = false
-    initializingObjectID = 1
-
-    for (x = 1; x <= length_array(object); x++) {
-        object[x].IsInitialized = false
+    iInitializing = false
+    iInitialized = false
+    iInitializingObjectID = 1
+    for (x = 1; x <= length_array(uObject); x++) {
+	uObject[x].iInitialized = false
     }
 }
 
-
-define_function SendObjectRegistrationRequest(integer id) {
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'EXTRON_DMP_SENDING_REGISTRATION_MSG<', itoa(id), '>'")
-    send_string vdvCommObjects[id], "'REGISTER<', itoa(id), '>'"
+define_function InitializeQueue() {
+    uQueue.iBusy = false
+    uQueue.iHasItems = false
+    uQueue.iCommandHead = 1
+    uQueue.iCommandTail = 1
+    uQueue.iStatusHead = 1
+    uQueue.iStatusTail = 1
+    uQueue.iStrikeCount = 0
+    uQueue.iResendLast = false
+    uQueue.cLastMess = "''"
 }
 
+define_function Process() {
+    stack_var char cTemp[NAV_MAX_BUFFER]
+    iSemaphore = true
+    while (length_array(cRxBuffer) && NAVContains(cRxBuffer,"NAV_LF")) {
+	cTemp = remove_string(cRxBuffer,"NAV_LF",1)
+	if (length_array(cTemp)) {
+	    stack_var integer iResponseMessID
+	    NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_PARSING_STRING_FROM, dvPort, cTemp))
+	    cTemp = NAVStripCharsFromRight(cTemp, 2)	//Removes CR,LF
+	    select {
+		active (NAVContains(cTemp,'Vrb')): {
+		    if (!iCommunicating) {
+			iCommunicating = true
+			//SendString("NAV_ESC,'3CV',NAV_CR")	//Set Verbose Mode
+		    }
 
-define_function SendObjectResponse(integer id, char data[]) {
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'EXTRON_DMP_SENDING_RESPONSE_MSG<', data, '|', itoa(id), '>'")
-    send_string vdvCommObjects[id], "BuildObjectResponseMessage(data)"
-}
+		    if (iCommunicating && !iInitialized && iReadyToInitialize) {
+			InitializeObjects()
+		    }
+		}
+		active (1): {
+		    stack_var integer x
+		    stack_var integer i
+		    for (x = 1; x <= length_array(vdvCommObjects); x++) {
+			for (i = 1; i <= MAX_OBJECT_TAGS; i++) {
 
+			    if (NAVContains(cTemp,cObjectTag[i][x])) {
 
-define_function SendObjectInitRequest(integer id) {
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'EXTRON_DMP_SENDING_INIT_MSG<', itoa(id), '>'")
-    send_string vdvCommObjects[id], "'INIT<', itoa(id), '>'"
-}
+				send_string vdvCommObjects[x],"'RESPONSE_MSG<',cTemp,'>'"
+				NAVLog("'EXTRON_DMP_SENDING_RESPONSE_MSG<',cTemp,'|',itoa(x),'>'")
+				i = (MAX_OBJECT_TAGS + 1)
+				x = (MAX_OBJECTS + 1)
+			    }
+			}
+		    }
+		}
+	    }
 
-
-define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
-    NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_PARSING_STRING_FROM, dvPort, args.Data))
-
-    args.Data = NAVStripCharsFromRight(args.Data, length_array(args.Delimiter))
-
-    select {
-        active (NAVContains(args.Data, HEARTBEAT_RESPONSE_HEADER)): {
-            module.Device.IsCommunicating = true
-            InitializeObjects()
-        }
-        active (true): {
-            stack_var integer x
-            stack_var integer z
-
-            for (x = 1; x <= length_array(vdvCommObjects); x++) {
-                for (z = 1; z <= length_array(object[x].Tag); z++) {
-                    if (!NAVContains(args.Data, object[x].Tag[z])) {
-                        continue
-                    }
-
-                    SendObjectResponse(x, args.Data)
-
-                    break
-                }
-
-                break
-            }
-        }
+	    GoodResponse()
+	}
     }
 
-    NAVDevicePriorityQueueGoodResponse(priorityQueue)
+    iSemaphore = false
 }
 
 
-define_function Process(_NAVRxBuffer buffer) {
-    if (NAVContains(buffer.Data, PASSWORD_PROMPT)) {
-        buffer.Data = "''"
-        SendString("credential.Password, NAV_CR, NAV_LF")
-
-        return
-    }
-
-    NAVStringGather(buffer, DEVICE_DELIMITER)
-}
 
 
-define_function MaintainSocketConnection() {
-    if (module.Device.SocketConnection.IsConnected) {
-        return
-    }
-
-    NAVClientSocketOpen(dvPort.PORT,
-                        module.Device.SocketConnection.Address,
-                        module.Device.SocketConnection.Port,
-                        IP_TCP)
-}
-
-
-define_function SendHeartbeat() {
-    if (NAVDevicePriorityQueueHasItems(priorityQueue) || priorityQueue.Busy) {
-        return
-    }
-
-    NAVDevicePriorityQueueEnqueue(priorityQueue, "'POLL_MSG<HEARTBEAT|', HEARTBEAT_COMMAND, '>'", false)
-}
-
-
-define_function NAVModulePropertyEventCallback(_NAVModulePropertyEvent event) {
-    switch (upper_string(event.Name)) {
-        case 'IP_ADDRESS': {
-            module.Device.SocketConnection.Address = event.Args[1]
-            module.Device.SocketConnection.Port = NAV_TELNET_PORT
-            NAVTimelineStart(TL_SOCKET_CHECK, socketCheck, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
-        }
-        case 'PASSWORD': {
-            credential.Password = event.Args[1]
-        }
+define_function MaintainIPConnection() {
+    if (!iIPConnected) {
+	NAVClientSocketOpen(dvPort.port,cIPAddress,NAV_TELNET_PORT,IP_TCP)
     }
 }
-
-
-define_function ObjectRegister(integer index, tdata data) {
-    stack_var integer id
-    stack_var char tagList[NAV_MAX_BUFFER]
-
-    id = GetObjectId(data.text)
-
-    if (!NAVContains(data.text, '|')) {
-        object[id].IsRegistered = true
-        return
-    }
-
-    tagList = GetObjectMessage(data.text)
-    NAVSplitString(tagList, ',', object[id].Tag)
-    set_length_array(object[id].Tag, GetStringArrayLength(object[id].Tag))
-
-    object[id].IsRegistered = true
-
-    if (index < length_array(vdvCommObjects)) {
-        return
-    }
-
-    ready = true
-}
-
-
-define_function ObjectInitDone(integer index, tdata data) {
-    stack_var integer id
-
-    initializing = false
-
-    id = GetObjectId(data.text)
-    object[id].IsInitialized = true
-
-    InitializeObjects()
-
-    if (index < length_array(vdvCommObjects)) {
-        return
-    }
-
-    // We are done!
-    send_string vdvObject, "'INIT_DONE'"
-}
-
-
-define_function ObjectResponseOk(tdata data) {
-    if (GetObjectFullMessage(data.text) != GetObjectFullMessage(priorityQueue.LastMessage)) {
-        return
-    }
-
-    NAVDevicePriorityQueueGoodResponse(priorityQueue)
-}
-
 
 (***********************************************************)
 (*                STARTUP CODE GOES BELOW                  *)
 (***********************************************************)
 DEFINE_START {
-    create_buffer dvPort, module.RxBuffer.Data
+    create_buffer dvPort,cRxBuffer
     Reset()
 }
-
 (***********************************************************)
 (*                THE EVENTS GO BELOW                      *)
 (***********************************************************)
 DEFINE_EVENT
-
 data_event[dvPort] {
     online: {
-        if (data.device.number != 0) {
-            NAVCommand(data.device, "'SET BAUD 38400,N,8,1 485 DISABLE'")
-            NAVCommand(data.device, "'B9MOFF'")
-            NAVCommand(data.device, "'CHARD-0'")
-            NAVCommand(data.device, "'CHARDM-0'")
-            NAVCommand(data.device, "'HSOFF'")
-        }
+	if (data.device.number <> 0) {
+	    send_command data.device,"'SET BAUD 38400,N,8,1 485 DISABLE'"
+	    send_command data.device,"'B9MOFF'"
+	    send_command data.device,"'CHARD-0'"
+	    send_command data.device,"'CHARDM-0'"
+	    send_command data.device,"'HSOFF'"
+	}
 
-        NAVTimelineStart(TL_HEARTBEAT, heartbeat, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
+	//if (data.device.number <> 0) {
+	    timeline_create(TL_HEARTBEAT,ltHeartbeat,length_array(ltHeartbeat),TIMELINE_ABSOLUTE,TIMELINE_REPEAT)
+	//}
 
-        if (data.device.number == 0) {
-            module.Device.SocketConnection.IsConnected = true
-        }
+	if (data.device.number == 0) {
+	    iIPConnected = true
+	    //SendString(cUserName)
+	    //SendString(cPassword)
+	}
     }
     string: {
-        NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_STRING_FROM, data.device, data.text))
-
-        Process(module.RxBuffer)
+	NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_STRING_FROM, data.device, data.text))
+	select {
+	    // active (NAVContains(cRxBuffer,"'user:'")): {
+		//     cRxBuffer = "''"; SendString(cUserName);
+	    // }
+	    active (NAVContains(cRxBuffer,"'Password:'")): {
+		    cRxBuffer = "''"; SendString("cPassword, NAV_CR, NAV_LF");
+	    }
+	    active (1): {
+		if (!iSemaphore) { Process() }
+	    }
+	}
     }
     offline: {
-        if (data.device.number == 0) {
-            NAVClientSocketClose(data.device.port)
-            module.Device.SocketConnection.IsConnected = false
-            module.Device.SocketConnection.IsAuthenticated = false
-            module.Device.IsCommunicating = false
-            NAVTimelineStop(TL_HEARTBEAT)
-        }
+	if (data.device.number == 0) {
+	    NAVClientSocketClose(dvPort.port)
+	    iIPConnected = false
+	    iIPAuthenticated = false
+	    iCommunicating = false
+	    NAVTimelineStop(TL_HEARTBEAT)
+	}
     }
     onerror: {
-        if (data.device.number == 0) {
-            module.Device.SocketConnection.IsConnected = false
-            module.Device.SocketConnection.IsAuthenticated = false
-            module.Device.IsCommunicating = false
-        }
+	if (data.device.number == 0) {
+	    //iIPConnected = false
+	    //iIPAuthenticated = false
+	    //iCommunicating = false
+	    //if (timeline_active(TL_HEARTBEAT)) {
+	//	NAVTimelineStop(TL_HEARTBEAT)
+	    //}
+	}
     }
 }
 
-
-data_event[vdvObject] {
+data_event[vdvControl] {
     command: {
-        stack_var _NAVSnapiMessage message
+        stack_var char cCmdHeader[NAV_MAX_CHARS]
+	stack_var char cCmdParam[2][NAV_MAX_CHARS]
+	NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM, data.device, data.text))
+	cCmdHeader = DuetParseCmdHeader(data.text)
+	cCmdParam[1] = DuetParseCmdParam(data.text)
+	cCmdParam[2] = DuetParseCmdParam(data.text)
+	switch (cCmdHeader) {
+	    case 'PROPERTY': {
+		switch (cCmdParam[1]) {
+		    case 'IP_ADDRESS': {
+			cIPAddress = cCmdParam[2]
+			timeline_create(TL_IP_CHECK,ltIPCheck,length_array(ltIPCheck),timeline_absolute,timeline_repeat)
+		    }
+		    case 'USER_NAME': {
+			cUserName = cCmdParam[2]
+		    }
+		    case 'PASSWORD': {
+			cPassword = cCmdParam[2]
+		    }
+		}
+	    }
+	    case 'INIT': {
+		stack_var integer x
+		for (x = 1; x <= length_array(vdvCommObjects); x++) {
+		    send_string vdvCommObjects[x],"'REGISTER<',itoa(x),'>'"
+		    NAVLog("'EXTRON_DMP_REGISTER_SENT<',itoa(x),'>'")
+		}
 
-        NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM, data.device, data.text))
+		//timeline_create(TL_REGISTER,ltRegister,length_array(ltRegister),TIMELINE_ABSOLUTE,TIMELINE_REPEAT)
 
-        NAVParseSnapiMessage(data.text, message)
-
-        switch (message.Header) {
-            case 'INIT': {
-                stack_var integer x
-
-                for (x = 1; x <= length_array(vdvCommObjects); x++) {
-                    SendObjectRegistrationRequest(x)
-                }
-            }
-        }
+		//iReadyToInitialize = true
+		//if (data
+		//timeline_create(TL_HEARTBEAT,ltHeartbeat,length_array(ltHeartbeat),TIMELINE_ABSOLUTE,TIMELINE_REPEAT)
+	    }
+	}
     }
 }
-
 
 data_event[vdvCommObjects] {
     online: {
-        SendObjectRegistrationRequest(get_last(vdvCommObjects))
+	//if (get_last(vdvCommObjects) == length_array(vdvCommObjects)) {
+	  //  timeline_create(TL_REGISTER,ltRegister,length_array(ltRegister),TIMELINE_ABSOLUTE,TIMELINE_REPEAT)
+	//}
+	send_string data.device,"'REGISTER<',itoa(get_last(vdvCommObjects)),'>'"
+	NAVLog("'EXTRON_DMP_REGISTER<',itoa(get_last(vdvCommObjects)),'>'")
     }
     command: {
-        stack_var char cmdHeader[NAV_MAX_CHARS]
-        stack_var integer index
+	stack_var char cCmdHeader[NAV_MAX_CHARS]
+	stack_var integer iResponseObjectMessID
+	NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM, data.device, data.text))
+	cCmdHeader = DuetParseCmdHeader(data.text)
+	switch (cCmdHeader) {
+	    case 'COMMAND_MSG': { AddToQueue("cCmdHeader,data.text",true) }
+	    case 'POLL_MSG': { AddToQueue("cCmdHeader,data.text",false) }
+	    case 'RESPONSE_OK': {
+		if (NAVGetStringBetween(data.text,'<','>') == NAVGetStringBetween(uQueue.cLastMess,'<','>')) {
+		    GoodResponse()
+		}
+	    }
+	    case 'INIT_DONE': {
+		iInitializing = false
+		iResponseObjectMessID = atoi(NAVGetStringBetween(data.text,'<','>'))
+		uObject[iResponseObjectMessID].iInitialized = true
+		InitializeObjects()
+		if (get_last(vdvCommObjects) == length_array(vdvCommObjects)) {
+		    //Init is Done!
+		    send_string vdvControl,"'INIT_DONE'"
+		}
+	    }
+	    case 'REGISTER': {
+		//iRegistering = false
+		if (NAVContains(data.text,'|')) {
+		    iResponseObjectMessID = atoi(NAVGetStringBetween(data.text,'<','|'))
+		    if (NAVContains(data.text,',')) {
+			stack_var integer x
+			x = 1
+			remove_string(data.text,'|',1)
+			while (length_array(data.text) &&  (NAVContains(data.text,',') || NAVContains(data.text,'>'))) {
+			    select {
+				active (NAVContains(data.text,',')): {
+				    cObjectTag[x][iResponseObjectMessID] = NAVStripCharsFromRight(remove_string(data.text,',',1),1)
+				    x++
+				}
+				active (NAVContains(data.text,'>')): {
+				    cObjectTag[x][iResponseObjectMessID] = NAVStripCharsFromRight(remove_string(data.text,'>',1),1)
+				}
+			    }
+			}
+		    }else {
+			cObjectTag[1][iResponseObjectMessID] = NAVGetStringBetween(data.text,'|','>')
+		    }
 
-        NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM, data.device, data.text))
+		    uObject[iResponseObjectMessID].iRegistered = true
+		}else {
+		    iResponseObjectMessID = atoi(NAVGetStringBetween(data.text,'<','>'))
+		    uObject[iResponseObjectMessID].iRegistered = true
+		}
 
-        index = get_last(vdvCommObjects)
-
-        cmdHeader = DuetParseCmdHeader(data.text)
-
-        switch (cmdHeader) {
-            case 'COMMAND_MSG': {
-                NAVDevicePriorityQueueEnqueue(priorityQueue, "cmdHeader, data.text", true)
-            }
-            case 'POLL_MSG': {
-                NAVDevicePriorityQueueEnqueue(priorityQueue, "cmdHeader, data.text", false)
-            }
-            case 'RESPONSE_OK': {
-                ObjectResponseOk(data)
-            }
-            case 'INIT_DONE': {
-                ObjectInitDone(index, data)
-            }
-            case 'REGISTER': {
-                ObjectRegister(index, data)
-            }
-        }
+		if (get_last(vdvCommObjects) == length_array(vdvCommObjects)) {
+		    iReadyToInitialize = true
+		}
+		// RegisterObjects()
+	    }
+	}
     }
 }
 
+timeline_event[TL_HEARTBEAT] {
 
-timeline_event[TL_HEARTBEAT] { SendHeartbeat() }
+    if (!uQueue.iHasItems && !uQueue.iBusy) {
+	AddToQueue("'POLL_MSG<HEARTBEAT|',NAV_ESC,'3CV',NAV_CR,'>'",false)
+    }
+}
+
+timeline_event[TL_IP_CHECK] { MaintainIPConnection() }
 
 
-timeline_event[TL_SOCKET_CHECK] { MaintainSocketConnection() }
+timeline_event[TL_REGISTER] {
+    stack_var integer x
+    x = type_cast(timeline.repetition + 1)
+    send_string vdvCommObjects[x],"'REGISTER<',itoa(x),'>'"
+    NAVLog("'EXTRON_DMP_REGISTER_SENT<',itoa(x),'>'")
+    if (x == length_array(vdvCommObjects)) {
+	timeline_kill(timeline.id)
+    }
+}
 
 
 timeline_event[TL_NAV_FEEDBACK] {
-    [vdvObject, NAV_IP_CONNECTED]	= (module.Device.SocketConnection.IsConnected && module.Device.SocketConnection.IsAuthenticated)
-    [vdvObject, DEVICE_COMMUNICATING] = (module.Device.IsCommunicating)
-    [vdvObject, DATA_INITIALIZED] = (module.Device.IsInitialized)
+    [vdvControl,NAV_IP_CONNECTED]	= (iIPConnected && iIPAuthenticated)
+    [vdvControl,DEVICE_COMMUNICATING] = (iCommunicating)
+    [vdvControl,DATA_INITIALIZED] = (iInitialized)
 }
-
 
 (***********************************************************)
 (*                     END OF PROGRAM                      *)
 (*        DO NOT PUT ANY CODE BELOW THIS COMMENT           *)
 (***********************************************************)
+
