@@ -18,7 +18,7 @@ MODULE_NAME='mExtronDMPStateUI'	(
 
 MIT License
 
-Copyright (c) 2022 Norgate AV Solutions Ltd
+Copyright (c) 2023 Norgate AV Services Limited
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -66,6 +66,8 @@ DEFINE_VARIABLE
 
 volatile integer locked
 
+volatile integer blinkerEnabled = false
+
 
 (***********************************************************)
 (*               LATCHING DEFINITIONS GO BELOW             *)
@@ -100,7 +102,6 @@ button_event[dvTP, 0] {
     push: {
         switch (button.input.channel) {
             case VOL_MUTE: {
-                NAVLog('DMP_STATE_UI_MUTE_PRESSED')
                 to[vdvStateObject, button.input.channel]
             }
             case LOCK_TOGGLE: {
@@ -117,8 +118,38 @@ button_event[dvTP, 0] {
 }
 
 
+data_event[vdvStateObject] {
+    online: {
+
+    }
+    command: {
+        stack_var _NAVSnapiMessage message
+
+        NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM, data.device, data.text))
+
+        NAVParseSnapiMessage(data.text, message)
+
+        switch (message.Header) {
+            case 'PROPERTY': {
+                switch (message.Parameter[1]) {
+                    case 'MUTE_BLINK': {
+                        blinkerEnabled = atoi(NAVStringToBoolean(message.Parameter[2]))
+                    }
+                }
+            }
+        }
+    }
+}
+
+
 timeline_event[TL_NAV_FEEDBACK] {
-    [dvTP, VOL_MUTE]	= ([vdvStateObject, VOL_MUTE_FB])
+    if (!blinkerEnabled) {
+        [dvTP, VOL_MUTE]	= ([vdvStateObject, VOL_MUTE_FB])
+    }
+    else {
+        [dvTP, VOL_MUTE]	= ([vdvStateObject, VOL_MUTE_FB] && NAVBlinker)
+    }
+
     [dvTP, LOCK_TOGGLE]	= (locked)
     [dvTP, LOCK_ON]	= (locked)
     [dvTP, LOCK_OFF]	= (!locked)

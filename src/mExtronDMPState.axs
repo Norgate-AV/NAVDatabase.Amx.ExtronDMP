@@ -19,7 +19,7 @@ MODULE_NAME='mExtronDMPState'	(
 
 MIT License
 
-Copyright (c) 2022 Norgate AV Solutions Ltd
+Copyright (c) 2023 Norgate AV Services Limited
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -205,7 +205,10 @@ define_function NAVModulePropertyEventCallback(_NAVModulePropertyEvent event) {
 
 
 define_function SetObjectState(_DspState object, integer value) {
-    SendObjectMessage(vdvCommObject, BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER, object.Properties.Id, BuildPayload(object.Properties, itoa(value))))
+    SendObjectMessage(vdvCommObject,
+                        BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                            object.Properties.Id,
+                                            BuildPayload(object.Properties, itoa(value))))
 }
 
 

@@ -18,7 +18,7 @@ MODULE_NAME='mExtronDMPLevelUI'	(
 
 MIT License
 
-Copyright (c) 2022 Norgate AV Solutions Ltd
+Copyright (c) 2023 Norgate AV Services Limited
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -49,8 +49,6 @@ DEFINE_DEVICE
 (***********************************************************)
 DEFINE_CONSTANT
 
-constant integer LEVEL_VOLUME = 1
-
 constant integer ADDRESS_LEVEL_PERCENTAGE	= 1
 
 constant integer LOCK_TOGGLE	= 301
@@ -72,10 +70,8 @@ DEFINE_VARIABLE
 volatile integer locked
 
 volatile integer levelTouched
-volatile sinteger siRequestedLevel = -1
 
-volatile sinteger level
-volatile sinteger oldLevel
+volatile sinteger currentLevel
 
 
 (***********************************************************)
@@ -94,20 +90,25 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (* EXAMPLE: DEFINE_FUNCTION <RETURN_TYPE> <NAME> (<PARAMETERS>) *)
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
 
-define_function Update() {
-    oldLevel = level
+define_function Update(dev device, sinteger level) {
+    if (levelTouched) {
+        return
+    }
 
-    if (siRequestedLevel >= 0) {
-        if (siRequestedLevel == level) {
-            siRequestedLevel = -1
-        }
+    currentLevel = level
+    send_level device, VOL_LVL, level
+
+    NAVText(device, ADDRESS_LEVEL_PERCENTAGE, '0', "itoa(NAVScaleValue(type_cast(level), 255, 100, 0)), '%'")
+}
+
+
+define_function LevelEventHandler(dev device, tlevel level) {
+    if (!levelTouched || locked) {
+        return
     }
-    else {
-        if (!levelTouched) {
-            send_level dvTP, LEVEL_VOLUME, level
-            NAVCommand(dvTP, "'^TXT-', itoa(ADDRESS_LEVEL_PERCENTAGE), ',0,', itoa(NAVScaleValue(type_cast(level), 255, 100, 0)), '%'")
-        }
-    }
+
+    NAVCommand(vdvLevelObject, "'VOLUME-', itoa(level.value)")
+    NAVText(device, ADDRESS_LEVEL_PERCENTAGE, '0', "itoa(NAVScaleValue(type_cast(level.value), 255, 100, 0)), '%'")
 }
 
 
@@ -123,9 +124,8 @@ DEFINE_START {
 (***********************************************************)
 DEFINE_EVENT
 
-level_event[vdvLevelObject, LEVEL_VOLUME] {
-    level = level.value
-    Update()
+level_event[vdvLevelObject, VOL_LVL] {
+    Update(dvTP, level.value)
 }
 
 
@@ -162,18 +162,34 @@ button_event[dvTP, 0] {
 }
 
 
-level_event[dvTP, LEVEL_VOLUME] {
-    if (levelTouched && !locked) {
-        siRequestedLevel = level.value
-        NAVCommand(vdvLevelObject, "'VOLUME-', itoa(siRequestedLevel)")
-        NAVCommand(dvTP, "'^TXT-', itoa(ADDRESS_LEVEL_PERCENTAGE), ',0,', itoa(NAVScaleValue(type_cast(siRequestedLevel), 255, 100, 0)), '%'")
-    }
+level_event[dvTP, VOL_LVL] {
+    LevelEventHandler(dvTP, level)
 }
 
 
 data_event[dvTP] {
     online: {
-        Update()
+        Update(dvTP, currentLevel)
+    }
+}
+
+
+data_event[vdvLevelObject] {
+    online: {
+
+    }
+    command: {
+        stack_var _NAVSnapiMessage message
+
+        NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM, data.device, data.text))
+
+        NAVParseSnapiMessage(data.text, message)
+
+        switch (message.Header) {
+            default: {
+
+            }
+        }
     }
 }
 

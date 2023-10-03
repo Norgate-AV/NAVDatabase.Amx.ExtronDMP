@@ -24,7 +24,7 @@ MODULE_NAME='mExtronDMPComm'	(
 
 MIT License
 
-Copyright (c) 2022 Norgate AV Solutions Ltd
+Copyright (c) 2023 Norgate AV Services Limited
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -63,7 +63,7 @@ constant char HEARTBEAT_RESPONSE_HEADER[] = 'Vrb'
 
 constant char PASSWORD_PROMPT[] = 'Password:'
 
-constant char DEVICE_DELIMITER[] = "NAV_CR, NAV_LF"
+constant char DEVICE_DELIMITER[] = "{NAV_CR}, {NAV_LF}"
 
 
 (***********************************************************)
@@ -244,7 +244,10 @@ define_function MaintainSocketConnection() {
         return
     }
 
-    NAVClientSocketOpen(dvPort.PORT, module.Device.SocketConnection.Address, NAV_TELNET_PORT, IP_TCP)
+    NAVClientSocketOpen(dvPort.PORT,
+                        module.Device.SocketConnection.Address,
+                        module.Device.SocketConnection.Port,
+                        IP_TCP)
 }
 
 
@@ -261,6 +264,7 @@ define_function NAVModulePropertyEventCallback(_NAVModulePropertyEvent event) {
     switch (upper_string(event.Name)) {
         case 'IP_ADDRESS': {
             module.Device.SocketConnection.Address = event.Args[1]
+            module.Device.SocketConnection.Port = NAV_TELNET_PORT
             NAVTimelineStart(TL_SOCKET_CHECK, socketCheck, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
         }
         case 'PASSWORD': {
