@@ -144,6 +144,11 @@ define_function Process() {
 }
 
 
+define_function char[255] GetPresetCommand(integer preset) {
+    return format('%02d.', preset)
+}
+
+
 (***********************************************************)
 (*                STARTUP CODE GOES BELOW                  *)
 (***********************************************************)
@@ -177,7 +182,7 @@ data_event[vdvObject] {
 	    case 'PROPERTY': {
 	    }
 	    case 'PRESET': {
-		BuildCommand('COMMAND_MSG',"cCmdParam[1],'.'")
+		BuildCommand('COMMAND_MSG', GetPresetCommand(atoi(cCmdParam[1])))
 	    }
 	}
     }
