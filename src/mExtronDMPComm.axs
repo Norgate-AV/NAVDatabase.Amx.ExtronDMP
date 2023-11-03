@@ -368,9 +368,7 @@ define_function Process() {
 			//SendString("NAV_ESC,'3CV',NAV_CR")	//Set Verbose Mode
 		    }
 
-		    if (iCommunicating && !iInitialized && iReadyToInitialize) {
-			InitializeObjects()
-		    }
+		    AttemptToInitialize()
 		}
 		active (1): {
 		    stack_var integer x
@@ -403,6 +401,13 @@ define_function Process() {
 define_function MaintainIPConnection() {
     if (!iIPConnected) {
 	NAVClientSocketOpen(dvPort.port,cIPAddress,NAV_TELNET_PORT,IP_TCP)
+    }
+}
+
+
+define_function AttemptToInitialize() {
+    if (iCommunicating && !iInitialized && iReadyToInitialize) {
+        InitializeObjects()
     }
 }
 
@@ -574,6 +579,8 @@ data_event[vdvCommObjects] {
 
 		if (get_last(vdvCommObjects) == length_array(vdvCommObjects)) {
 		    iReadyToInitialize = true
+
+            AttemptToInitialize()
 		}
 		// RegisterObjects()
 	    }
