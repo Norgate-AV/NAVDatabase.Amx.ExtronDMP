@@ -17,7 +17,7 @@
         "url": "https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/issues"
     },
     "engines": {
-        "node": ">=14"
+        "node": ">=18"
     },
     "scripts": {
         "build": "pwsh ./build.ps1",
@@ -32,15 +32,16 @@
         "analyze": "size-limit --why"
     },
     "devDependencies": {
-        "@commitlint/cli": "^17.4.4",
-        "@commitlint/config-conventional": "^17.4.4",
+        "@commitlint/cli": "^19.0.3",
+        "@commitlint/config-conventional": "^19.0.3",
+        "@norgate-av/genlinx": "^2.2.1",
         "all-contributors-cli": "^6.24.0",
         "commitizen": "^4.3.0",
         "cz-conventional-changelog": "3.3.0",
         "doctoc": "^2.2.1",
-        "husky": "^8.0.3",
-        "lint-staged": "^14.0.1",
-        "prettier": "^3.0.3",
-        "size-limit": "^9.0.0"
+        "husky": "^9.0.11",
+        "lint-staged": "^15.2.2",
+        "prettier": "^3.2.5",
+        "size-limit": "^11.0.2"
     }
 }
