@@ -37,6 +37,7 @@
         "@norgate-av/genlinx": "^2.2.1",
         "@semantic-release/changelog": "^6.0.3",
         "@semantic-release/git": "^10.0.1",
+        "@size-limit/preset-small-lib": "^11.0.2",
         "all-contributors-cli": "^6.24.0",
         "commitizen": "^4.3.0",
         "cz-conventional-changelog": "3.3.0",
