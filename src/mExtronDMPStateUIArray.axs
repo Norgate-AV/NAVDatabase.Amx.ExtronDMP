@@ -1,12 +1,10 @@
-MODULE_NAME='mExtronDMPStateUIArray'	(
+MODULE_NAME='mExtronDMPStateUIArray'    (
                                             dev dvTP[],
-                                            dev vdvStateObject
+                                            dev vdvObject
                                         )
 
 (***********************************************************)
 #include 'NAVFoundation.ModuleBase.axi'
-#include 'NAVFoundation.Math.axi'
-#include 'NAVFoundation.UIUtils.axi'
 
 /*
  _   _                       _          ___     __
@@ -49,9 +47,9 @@ DEFINE_DEVICE
 (***********************************************************)
 DEFINE_CONSTANT
 
-constant integer LOCK_TOGGLE	= 301
-constant integer LOCK_ON	= 302
-constant integer LOCK_OFF	= 303
+constant integer LOCK_TOGGLE    = 301
+constant integer LOCK_ON    = 302
+constant integer LOCK_OFF    = 303
 
 
 (***********************************************************)
@@ -102,7 +100,7 @@ button_event[dvTP, 0] {
     push: {
         switch (button.input.channel) {
             case VOL_MUTE: {
-                to[vdvStateObject, button.input.channel]
+                to[vdvObject, button.input.channel]
             }
             case LOCK_TOGGLE: {
                 locked = !locked
@@ -118,10 +116,7 @@ button_event[dvTP, 0] {
 }
 
 
-data_event[vdvStateObject] {
-    online: {
-
-    }
+data_event[vdvObject] {
     command: {
         stack_var _NAVSnapiMessage message
 
@@ -147,19 +142,19 @@ data_event[vdvStateObject] {
 
 timeline_event[TL_NAV_FEEDBACK] {
     if (!blinkerEnabled) {
-        [dvTP, VOL_MUTE]	= ([vdvStateObject, VOL_MUTE_FB])
+        [dvTP, VOL_MUTE]    = ([vdvObject, VOL_MUTE_FB])
     }
     else {
-        [dvTP, VOL_MUTE]	= ([vdvStateObject, VOL_MUTE_FB] && NAVBlinker)
+        [dvTP, VOL_MUTE]    = ([vdvObject, VOL_MUTE_FB] && NAVBlinker)
     }
 
-    [dvTP, LOCK_TOGGLE]	= (locked)
-    [dvTP, LOCK_ON]	= (locked)
-    [dvTP, LOCK_OFF]	= (!locked)
+    [dvTP, LOCK_TOGGLE]    = (locked)
+    [dvTP, LOCK_ON]    = (locked)
+    [dvTP, LOCK_OFF]    = (!locked)
 }
-
 
 (***********************************************************)
 (*                     END OF PROGRAM                      *)
 (*        DO NOT PUT ANY CODE BELOW THIS COMMENT           *)
 (***********************************************************)
+
