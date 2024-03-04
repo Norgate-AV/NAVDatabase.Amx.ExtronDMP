@@ -22,7 +22,7 @@
     "scripts": {
         "build": "pwsh ./build.ps1",
         "commit": "git-cz",
-        "prepare": "husky install",
+        "prepare": "husky",
         "pretty:fix": "prettier --write .",
         "doctoc": "doctoc README.md",
         "contrib:add": "all-contributors add",
