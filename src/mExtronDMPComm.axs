@@ -7,6 +7,7 @@ MODULE_NAME='mExtronDMPComm'	(
 (***********************************************************)
 #DEFINE USING_NAV_DEVICE_PRIORITY_QUEUE_SEND_NEXT_ITEM_EVENT_CALLBACK
 #DEFINE USING_NAV_DEVICE_PRIORITY_QUEUE_FAILED_RESPONSE_EVENT_CALLBACK
+#DEFINE USING_NAV_MODULE_BASE_CALLBACKS
 #DEFINE USING_NAV_MODULE_BASE_PROPERTY_EVENT_CALLBACK
 #DEFINE USING_NAV_STRING_GATHER_CALLBACK
 #include 'NAVFoundation.ModuleBase.axi'
@@ -105,7 +106,11 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
 
 define_function SendStringRaw(char payload[]) {
-    NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_STRING_TO, dvPort, payload))
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_STRING_TO,
+                                            dvPort,
+                                            payload))
+
     send_string dvPort, "payload"
 }
 
@@ -115,6 +120,7 @@ define_function SendString(char payload[]) {
 }
 
 
+#IF_DEFINED USING_NAV_DEVICE_PRIORITY_QUEUE_SEND_NEXT_ITEM_EVENT_CALLBACK
 define_function NAVDevicePriorityQueueSendNextItemEventCallback(char item[]) {
     stack_var char payload[NAV_MAX_BUFFER]
 
@@ -122,6 +128,7 @@ define_function NAVDevicePriorityQueueSendNextItemEventCallback(char item[]) {
 
     SendString(payload)
 }
+#END_IF
 
 
 define_function InitializeObjects() {
@@ -152,9 +159,11 @@ define_function InitializeObjects() {
 }
 
 
+#IF_DEFINED USING_NAV_DEVICE_PRIORITY_QUEUE_FAILED_RESPONSE_EVENT_CALLBACK
 define_function NAVDevicePriorityQueueFailedResponseEventCallback(_NAVDevicePriorityQueue queue) {
     module.Device.IsCommunicating = false
 }
+#END_IF
 
 
 define_function Reset() {
@@ -193,8 +202,12 @@ define_function SendObjectInitRequest(integer id) {
 }
 
 
+#IF_DEFINED USING_NAV_STRING_GATHER_CALLBACK
 define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
-    NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_PARSING_STRING_FROM, dvPort, args.Data))
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_PARSING_STRING_FROM,
+                                            dvPort,
+                                            args.Data))
 
     args.Data = NAVStripCharsFromRight(args.Data, length_array(args.Delimiter))
 
@@ -225,6 +238,7 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
 
     NAVDevicePriorityQueueGoodResponse(priorityQueue)
 }
+#END_IF
 
 
 define_function Process(_NAVRxBuffer buffer) {
@@ -256,10 +270,13 @@ define_function SendHeartbeat() {
         return
     }
 
-    NAVDevicePriorityQueueEnqueue(priorityQueue, "'POLL_MSG<HEARTBEAT|', HEARTBEAT_COMMAND, '>'", false)
+    NAVDevicePriorityQueueEnqueue(priorityQueue,
+                                    "'POLL_MSG<HEARTBEAT|', HEARTBEAT_COMMAND, '>'",
+                                    false)
 }
 
 
+#IF_DEFINED USING_NAV_MODULE_BASE_PROPERTY_EVENT_CALLBACK
 define_function NAVModulePropertyEventCallback(_NAVModulePropertyEvent event) {
     switch (upper_string(event.Name)) {
         case 'IP_ADDRESS': {
@@ -272,6 +289,7 @@ define_function NAVModulePropertyEventCallback(_NAVModulePropertyEvent event) {
         }
     }
 }
+#END_IF
 
 
 define_function ObjectRegister(integer index, tdata data) {
@@ -357,16 +375,21 @@ data_event[dvPort] {
         }
     }
     string: {
-        NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_STRING_FROM, data.device, data.text))
+        NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_STRING_FROM,
+                                                data.device,
+                                                data.text))
 
         Process(module.RxBuffer)
     }
     offline: {
         if (data.device.number == 0) {
             NAVClientSocketClose(data.device.port)
+
             module.Device.SocketConnection.IsConnected = false
             module.Device.SocketConnection.IsAuthenticated = false
             module.Device.IsCommunicating = false
+
             NAVTimelineStop(TL_HEARTBEAT)
         }
     }
@@ -384,7 +407,10 @@ data_event[vdvObject] {
     command: {
         stack_var _NAVSnapiMessage message
 
-        NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM, data.device, data.text))
+        NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM,
+                                                data.device,
+                                                data.text))
 
         NAVParseSnapiMessage(data.text, message)
 
@@ -409,7 +435,10 @@ data_event[vdvCommObjects] {
         stack_var char cmdHeader[NAV_MAX_CHARS]
         stack_var integer index
 
-        NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM, data.device, data.text))
+        NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM,
+                                                data.device,
+                                                data.text))
 
         index = get_last(vdvCommObjects)
 
@@ -443,7 +472,8 @@ timeline_event[TL_SOCKET_CHECK] { MaintainSocketConnection() }
 
 
 timeline_event[TL_NAV_FEEDBACK] {
-    [vdvObject, NAV_IP_CONNECTED]	= (module.Device.SocketConnection.IsConnected && module.Device.SocketConnection.IsAuthenticated)
+    [vdvObject, NAV_IP_CONNECTED]	= (module.Device.SocketConnection.IsConnected &&
+                                        module.Device.SocketConnection.IsAuthenticated)
     [vdvObject, DEVICE_COMMUNICATING] = (module.Device.IsCommunicating)
     [vdvObject, DATA_INITIALIZED] = (module.Device.IsInitialized)
 }

@@ -97,13 +97,14 @@ define_function Register(_DspObject object) {
 }
 
 
+#IF_DEFINED USING_NAV_STRING_GATHER_CALLBACK
 define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
     stack_var integer id
 
     NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_PARSING_STRING_FROM,
-                                                vdvCommObject,
-                                                args.Data))
+                NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_PARSING_STRING_FROM,
+                                            vdvCommObject,
+                                            args.Data))
 
     if (NAVContains(module.RxBuffer.Data, args.Data)) {
         module.RxBuffer.Data = "''"
@@ -134,6 +135,7 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
         }
     }
 }
+#END_IF
 
 
 define_function GetInitialized(_DspObject object) {
@@ -174,7 +176,10 @@ data_event[vdvObject] {
     command: {
         stack_var _NAVSnapiMessage message
 
-        NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM, data.device, data.text))
+        NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM,
+                                                data.device,
+                                                data.text))
 
         NAVParseSnapiMessage(data.text, message)
 

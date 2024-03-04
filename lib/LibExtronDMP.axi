@@ -181,7 +181,11 @@ define_function char[NAV_MAX_BUFFER] BuildObjectResponseMessage(char data[]) {
 
 
 define_function SendObjectMessage(dev device, char payload[]) {
-    NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_TO, device, payload))
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_TO,
+                                            device,
+                                            payload))
+
     NAVCommand(device, "payload")
 }
 

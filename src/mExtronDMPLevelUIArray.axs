@@ -191,7 +191,10 @@ data_event[vdvLevelObject] {
     command: {
         stack_var _NAVSnapiMessage message
 
-        NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM, data.device, data.text))
+        NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM,
+                                                data.device,
+                                                data.text))
 
         NAVParseSnapiMessage(data.text, message)
 
