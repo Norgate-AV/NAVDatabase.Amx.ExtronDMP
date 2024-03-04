@@ -1,4 +1,4 @@
-MODULE_NAME='mExtronDMPFaderUIArray'    (
+MODULE_NAME='mExtronDMPFaderUIArray'	(
                                             dev dvTP[],
                                             dev vdvLevelObject,
                                             dev vdvStateObject
@@ -50,13 +50,14 @@ DEFINE_DEVICE
 (***********************************************************)
 DEFINE_CONSTANT
 
-constant integer ADDRESS_LEVEL_PERCENTAGE    = 1
-constant integer ADDRESS_LABEL    = 2
+constant integer ADDRESS_LEVEL_PERCENTAGE	= 1
+constant integer ADDRESS_LABEL	= 2
 
-constant integer LOCK_TOGGLE    = 301
-constant integer LOCK_ON    = 302
-constant integer LOCK_OFF    = 303
-constant integer LEVEL_TOUCH    = 304
+constant integer LOCK_TOGGLE	= 301
+constant integer LOCK_ON	= 302
+constant integer LOCK_OFF	= 303
+constant integer LEVEL_TOUCH	= 304
+
 
 (***********************************************************)
 (*              DATA TYPE DEFINITIONS GO BELOW             *)
@@ -68,18 +69,16 @@ DEFINE_TYPE
 (***********************************************************)
 DEFINE_VARIABLE
 
-volatile integer iLocked
+volatile integer locked
 
-volatile integer iLevelTouched
-volatile sinteger siRequestedLevel = -1
+volatile integer levelTouched
 
-volatile sinteger iLevel
-volatile sinteger iOldLevel
+volatile sinteger currentLevel
 
+volatile integer blinkerEnabled = false
 
-volatile char cLabel[NAV_MAX_CHARS]
+volatile char label[NAV_MAX_CHARS] = ''
 
-volatile integer iMuteFeedbackBlink = false
 
 (***********************************************************)
 (*               LATCHING DEFINITIONS GO BELOW             *)
@@ -97,28 +96,37 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (* EXAMPLE: DEFINE_FUNCTION <RETURN_TYPE> <NAME> (<PARAMETERS>) *)
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
 
-define_function Update() {
-    iOldLevel = iLevel
+define_function Update(dev device[], sinteger level, char label[]) {
+    stack_var integer x
+    stack_var integer length
 
-    if (siRequestedLevel >= 0) {
-        if (siRequestedLevel == iLevel) {
-            siRequestedLevel = -1
-        }
-    }
-    else {
-        if (!iLevelTouched) {
-            stack_var integer x
-
-            for (x = 1; x <= length_array(dvTP); x++) {
-                send_level dvTP[x], VOL_LVL, iLevel
-            }
-
-            send_command dvTP, "'^TXT-', itoa(ADDRESS_LEVEL_PERCENTAGE), ', 0, ', itoa(NAVScaleValue(type_cast(iLevel), 255, 100, 0)), '%'"
-        }
+    if (levelTouched) {
+        return
     }
 
-    NAVTextArray(dvTP, ADDRESS_LABEL, '0', cLabel)
+    currentLevel = level
+
+    length = length_array(device)
+
+    for (x = 1; x <= length; x++) {
+        send_level device[x], VOL_LVL, level
+    }
+
+    NAVTextArray(device, ADDRESS_LEVEL_PERCENTAGE, '0', "itoa(NAVScaleValue(type_cast(level), 255, 100, 0)), '%'")
+
+    NAVTextArray(dvTP, ADDRESS_LABEL, '0', label)
 }
+
+
+define_function LevelEventHandler(dev device[], tlevel level) {
+    if (!levelTouched || locked) {
+        return
+    }
+
+    NAVCommand(vdvLevelObject, "'VOLUME-', itoa(level.value)")
+    NAVTextArray(device, ADDRESS_LEVEL_PERCENTAGE, '0', "itoa(NAVScaleValue(type_cast(level.value), 255, 100, 0)), '%'")
+}
+
 
 (***********************************************************)
 (*                STARTUP CODE GOES BELOW                  *)
@@ -133,8 +141,7 @@ DEFINE_START {
 DEFINE_EVENT
 
 level_event[vdvLevelObject, VOL_LVL] {
-    iLevel = level.value
-    Update()
+    Update(dvTP, level.value, label)
 }
 
 
@@ -143,29 +150,31 @@ button_event[dvTP, 0] {
         switch (button.input.channel) {
             case VOL_UP:
             case VOL_DN: {
-                if (!iLocked) {
+                if (!locked) {
                     to[vdvLevelObject, button.input.channel]
                 }
             }
-            case VOL_MUTE: { to[vdvStateObject, button.input.channel] }
+            case VOL_MUTE: {
+                to[vdvStateObject, button.input.channel]
+            }
             case LOCK_TOGGLE: {
-                iLocked = !iLocked
+                locked = !locked
             }
             case LOCK_ON: {
-                iLocked = true
+                locked = true
             }
             case LOCK_OFF: {
-                iLocked = false
+                locked = false
             }
             case LEVEL_TOUCH: {
-                iLevelTouched = true
+                levelTouched = true
             }
         }
     }
     release: {
         switch (button.input.channel) {
             case LEVEL_TOUCH: {
-                iLevelTouched = false
+                levelTouched = false
             }
         }
     }
@@ -173,17 +182,13 @@ button_event[dvTP, 0] {
 
 
 level_event[dvTP, VOL_LVL] {
-    if (iLevelTouched && !iLocked) {
-        siRequestedLevel = level.value
-        send_command vdvLevelObject, "'VOLUME-', itoa(siRequestedLevel)"
-        send_command dvTP, "'^TXT-', itoa(ADDRESS_LEVEL_PERCENTAGE), ', 0, ', itoa(NAVScaleValue(type_cast(siRequestedLevel), 255, 100, 0)), '%'"
-    }
+    LevelEventHandler(dvTP, level)
 }
 
 
 data_event[dvTP] {
     online: {
-        Update()
+        Update(dvTP, currentLevel, label)
     }
 }
 
@@ -193,23 +198,21 @@ data_event[vdvLevelObject] {
         NAVCommand(data.device, "'?LABEL'")
     }
     command: {
-        stack_var char cCmdHeader[NAV_MAX_CHARS]
-        stack_var char cCmdParam[2][NAV_MAX_CHARS]
+        stack_var _NAVSnapiMessage message
 
-        NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'Command from ',
-                                            NAVStringSurroundWith(NAVDeviceToString(data.device), '[', ']'),
-                                            ': [', data.text, ']'")
+        NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM,
+                                                data.device,
+                                                data.text))
 
-        cCmdHeader = DuetParseCmdHeader(data.text)
-        cCmdParam[1] = DuetParseCmdParam(data.text)
-        cCmdParam[2] = DuetParseCmdParam(data.text)
+        NAVParseSnapiMessage(data.text, message)
 
-        switch (cCmdHeader) {
+        switch (message.Header) {
             case 'PROPERTY': {
-                switch (cCmdParam[1]) {
+                switch (message.Parameter[1]) {
                     case 'LABEL': {
-                        cLabel = cCmdParam[2]
-                        Update()
+                        label = message.Parameter[2]
+                        Update(dvTP, currentLevel, label)
                     }
                 }
             }
@@ -219,30 +222,24 @@ data_event[vdvLevelObject] {
 
 
 data_event[vdvStateObject] {
+    online: {
+
+    }
     command: {
-        stack_var char cCmdHeader[NAV_MAX_CHARS]
-        stack_var char cCmdParam[2][NAV_MAX_CHARS]
+        stack_var _NAVSnapiMessage message
 
-        NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'Command from ',
-                                            NAVStringSurroundWith(NAVDeviceToString(data.device), '[', ']'),
-                                            ': [', data.text, ']'")
+        NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM,
+                                                data.device,
+                                                data.text))
 
-        cCmdHeader = DuetParseCmdHeader(data.text)
-        cCmdParam[1] = DuetParseCmdParam(data.text)
-        cCmdParam[2] = DuetParseCmdParam(data.text)
+        NAVParseSnapiMessage(data.text, message)
 
-        switch (cCmdHeader) {
+        switch (message.Header) {
             case 'PROPERTY': {
-                switch (cCmdParam[1]) {
-                    case 'FEEDBACK_BLINK': {
-                        switch (upper_string(cCmdParam[2])) {
-                            case 'true': {
-                                iMuteFeedbackBlink = true
-                            }
-                            case 'false': {
-                                iMuteFeedbackBlink = false
-                            }
-                        }
+                switch (message.Parameter[1]) {
+                    case 'MUTE_BLINK': {
+                        blinkerEnabled = atoi(NAVStringToBoolean(message.Parameter[2]))
                     }
                 }
             }
@@ -252,20 +249,20 @@ data_event[vdvStateObject] {
 
 
 timeline_event[TL_NAV_FEEDBACK] {
-    if (!iMuteFeedbackBlink) {
-        [dvTP, VOL_MUTE]    = ([vdvStateObject, VOL_MUTE_FB])
+    if (!blinkerEnabled) {
+        [dvTP, VOL_MUTE]	= ([vdvStateObject, VOL_MUTE_FB])
     }
     else {
-        [dvTP, VOL_MUTE]    = ([vdvStateObject, VOL_MUTE_FB] && NAVBlinker)
+        [dvTP, VOL_MUTE]	= ([vdvStateObject, VOL_MUTE_FB] && NAVBlinker)
     }
 
-    [dvTP, LOCK_TOGGLE]    = (iLocked)
-    [dvTP, LOCK_ON]    = (iLocked)
-    [dvTP, LOCK_OFF]    = (!iLocked)
+    [dvTP, LOCK_TOGGLE]	= (locked)
+    [dvTP, LOCK_ON]	= (locked)
+    [dvTP, LOCK_OFF]	= (!locked)
 }
+
 
 (***********************************************************)
 (*                     END OF PROGRAM                      *)
 (*        DO NOT PUT ANY CODE BELOW THIS COMMENT           *)
 (***********************************************************)
-

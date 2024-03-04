@@ -1,6 +1,6 @@
-MODULE_NAME='mExtronDMPLevelUIArray'    (
+MODULE_NAME='mExtronDMPLevelUIArray'	(
                                             dev dvTP[],
-                                            dev vdvObject
+                                            dev vdvLevelObject
                                         )
 
 (***********************************************************)
@@ -49,12 +49,13 @@ DEFINE_DEVICE
 (***********************************************************)
 DEFINE_CONSTANT
 
-constant integer ADDRESS_LEVEL_PERCENTAGE    = 1
+constant integer ADDRESS_LEVEL_PERCENTAGE	= 1
 
-constant integer LOCK_TOGGLE    = 301
-constant integer LOCK_ON    = 302
-constant integer LOCK_OFF    = 303
-constant integer LEVEL_TOUCH    = 304
+constant integer LOCK_TOGGLE	= 301
+constant integer LOCK_ON	= 302
+constant integer LOCK_OFF	= 303
+constant integer LEVEL_TOUCH	= 304
+
 
 (***********************************************************)
 (*              DATA TYPE DEFINITIONS GO BELOW             *)
@@ -66,13 +67,14 @@ DEFINE_TYPE
 (***********************************************************)
 DEFINE_VARIABLE
 
-volatile integer iLocked
+volatile integer locked
 
-volatile integer iLevelTouched
+volatile integer levelTouched
 volatile sinteger siRequestedLevel = -1
 
-volatile sinteger iLevel
-volatile sinteger iOldLevel
+volatile sinteger currentLevel
+volatile sinteger oldLevel
+
 
 (***********************************************************)
 (*               LATCHING DEFINITIONS GO BELOW             *)
@@ -90,26 +92,35 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (* EXAMPLE: DEFINE_FUNCTION <RETURN_TYPE> <NAME> (<PARAMETERS>) *)
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
 
-define_function Update() {
-    iOldLevel = iLevel
+define_function Update(dev device[], sinteger level) {
+    stack_var integer x
+    stack_var integer length
 
-    if (siRequestedLevel >= 0) {
-        if (siRequestedLevel == iLevel) {
-            siRequestedLevel = -1
-        }
+    if (levelTouched) {
+        return
     }
-    else {
-        if (!iLevelTouched) {
-            stack_var integer x
 
-            for (x = 1; x <= length_array(dvTP); x++) {
-                send_level dvTP[x], VOL_LVL, iLevel
-            }
+    currentLevel = level
 
-            send_command dvTP, "'^TXT-', itoa(ADDRESS_LEVEL_PERCENTAGE), ', 0, ', itoa(NAVScaleValue(type_cast(iLevel), 255, 100, 0)), '%'"
-        }
+    length = length_array(device)
+
+    for (x = 1; x <= length; x++) {
+        send_level device[x], VOL_LVL, level
     }
+
+    NAVTextArray(device, ADDRESS_LEVEL_PERCENTAGE, '0', "itoa(NAVScaleValue(type_cast(level), 255, 100, 0)), '%'")
 }
+
+
+define_function LevelEventHandler(dev device[], tlevel level) {
+    if (!levelTouched || locked) {
+        return
+    }
+
+    NAVCommand(vdvLevelObject, "'VOLUME-', itoa(level.value)")
+    NAVTextArray(device, ADDRESS_LEVEL_PERCENTAGE, '0', "itoa(NAVScaleValue(type_cast(level.value), 255, 100, 0)), '%'")
+}
+
 
 (***********************************************************)
 (*                STARTUP CODE GOES BELOW                  *)
@@ -117,14 +128,14 @@ define_function Update() {
 DEFINE_START {
 
 }
+
 (***********************************************************)
 (*                THE EVENTS GO BELOW                      *)
 (***********************************************************)
 DEFINE_EVENT
 
-level_event[vdvObject, VOL_LVL] {
-    iLevel = level.value
-    Update()
+level_event[vdvLevelObject, VOL_LVL] {
+    Update(dvTP, level.value)
 }
 
 
@@ -133,28 +144,28 @@ button_event[dvTP, 0] {
         switch (button.input.channel) {
             case VOL_UP:
             case VOL_DN: {
-                if (!iLocked) {
-                    to[vdvObject, button.input.channel]
+                if (!locked) {
+                    to[vdvLevelObject, button.input.channel]
                 }
             }
             case LOCK_TOGGLE: {
-                iLocked = !iLocked
+                locked = !locked
             }
             case LOCK_ON: {
-                iLocked = true
+                locked = true
             }
             case LOCK_OFF: {
-                iLocked = false
+                locked = false
             }
             case LEVEL_TOUCH: {
-                iLevelTouched = true
+                levelTouched = true
             }
         }
     }
     release: {
         switch (button.input.channel) {
             case LEVEL_TOUCH: {
-                iLevelTouched = false
+                levelTouched = false
             }
         }
     }
@@ -162,29 +173,48 @@ button_event[dvTP, 0] {
 
 
 level_event[dvTP, VOL_LVL] {
-    if (iLevelTouched && !iLocked) {
-        siRequestedLevel = level.value
-        send_command vdvObject, "'VOLUME-', itoa(siRequestedLevel)"
-        send_command dvTP, "'^TXT-', itoa(ADDRESS_LEVEL_PERCENTAGE), ', 0, ', itoa(NAVScaleValue(type_cast(siRequestedLevel), 255, 100, 0)), '%'"
-    }
+    LevelEventHandler(dvTP, level)
 }
 
 
 data_event[dvTP] {
     online: {
-        Update()
+        Update(dvTP, currentLevel)
+    }
+}
+
+
+data_event[vdvLevelObject] {
+    online: {
+
+    }
+    command: {
+        stack_var _NAVSnapiMessage message
+
+        NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM,
+                                                data.device,
+                                                data.text))
+
+        NAVParseSnapiMessage(data.text, message)
+
+        switch (message.Header) {
+            default: {
+
+            }
+        }
     }
 }
 
 
 timeline_event[TL_NAV_FEEDBACK] {
-    [dvTP, LOCK_TOGGLE]    = (iLocked)
-    [dvTP, LOCK_ON]    = (iLocked)
-    [dvTP, LOCK_OFF]    = (!iLocked)
+    [dvTP, LOCK_TOGGLE]	= (locked)
+    [dvTP, LOCK_ON]	= (locked)
+    [dvTP, LOCK_OFF]	= (!locked)
 }
+
 
 (***********************************************************)
 (*                     END OF PROGRAM                      *)
 (*        DO NOT PUT ANY CODE BELOW THIS COMMENT           *)
 (***********************************************************)
-

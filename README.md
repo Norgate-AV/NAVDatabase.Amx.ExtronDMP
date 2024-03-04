@@ -1,4 +1,4 @@
-# NAVModule.Amx.ExtronDMP
+# NAVDatabase.Amx.ExtronDMP
 
 <!-- <div align="center">
  <img src="./" alt="logo" width="200" />
@@ -6,7 +6,7 @@
 
 ---
 
-[![CI](https://github.com/Norgate-AV/Kingston-University/actions/workflows/main.yml/badge.svg)](https://github.com/Norgate-AV/NAVModule.Amx.ExtronDMP/actions/workflows/main.yml)
+[![CI](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/actions/workflows/main.yml/badge.svg)](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/actions/workflows/main.yml)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white)](https://conventionalcommits.org)
 [![Commitizen friendly](https://img.shields.io/badge/commitizen-friendly-brightgreen.svg)](http://commitizen.github.io/cz-cli/)
 [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -28,7 +28,7 @@ Description
 
 ## Team :soccer:
 
-This project is maintained by the following person(s) and a bunch of [awesome contributors](https://github.com/Norgate-AV/NAVModule.Amx.ExtronDMP/graphs/contributors).
+This project is maintained by the following person(s) and a bunch of [awesome contributors](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/graphs/contributors).
 
 <table>
   <tr>
@@ -40,7 +40,7 @@ This project is maintained by the following person(s) and a bunch of [awesome co
 
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 
-[![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-sparkles)
 
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
