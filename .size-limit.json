@@ -1,0 +1,6 @@
+[
+    {
+        "path": ["src/**/*.{axs,axi}", "lib/**/*.{axs,axi}"],
+        "limit": "10 KB"
+    }
+]
