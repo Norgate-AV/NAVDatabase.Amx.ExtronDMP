@@ -1,6 +1,6 @@
-MODULE_NAME='mExtronDMPPreset'	(
+MODULE_NAME='mExtronDMPPreset'    (
                                     dev vdvObject,
-                                    dev vdvControl
+                                    dev vdvCommObject
                                 )
 
 (***********************************************************)
@@ -87,57 +87,73 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (***********************************************************)
 (* EXAMPLE: DEFINE_FUNCTION <RETURN_TYPE> <NAME> (<PARAMETERS>) *)
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
+
 define_function SendCommand(char cParam[]) {
-    NAVLog("'Command to ',NAVStringSurroundWith(NAVDeviceToString(vdvControl), '[', ']'),': [',cParam,']'")
-    send_command vdvControl,"cParam"
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'Command to ', NAVStringSurroundWith(NAVDeviceToString(vdvCommObject), '[', ']'), ': [', cParam, ']'")
+    send_command vdvCommObject, "cParam"
 }
+
 
 define_function BuildCommand(char cHeader[], char cCmd[]) {
     if (length_array(cCmd)) {
-	SendCommand("cHeader,'-<',itoa(iID),'|',cCmd,'>'")
-    }else {
-	SendCommand("cHeader,'-<',itoa(iID),'>'")
+        SendCommand("cHeader, '-<', itoa(iID), '|', cCmd, '>'")
+    }
+    else {
+        SendCommand("cHeader, '-<', itoa(iID), '>'")
     }
 }
 
-define_function Register() {
-    //iRegistered = true
-    //cObjectTag[1] = BuildString(cUnitType,cUnitID,cAtt,cIndex[1],cIndex[2],cIndex[3],cIndex[4],'','','')
-    //cObjectTag[2] = BuildString(cUnitType,cUnitID,'MINMAX',cIndex[1],cIndex[2],cIndex[3],cIndex[4],'','','')
-    //if (iID) { BuildCommand('REGISTER',"cObjectTag[1],'*',cObjectTag[2]") }
-}
+
+define_function Register() {}
+
 
 define_function Process() {
     stack_var char cTemp[NAV_MAX_BUFFER]
+
+    if (iSemaphore) {
+        return
+    }
+
     iSemaphore = true
-    while (length_array(cRxBuffer) && NAVContains(cRxBuffer,'>')) {
-	cTemp = remove_string(cRxBuffer,"'>'",1)
-	if (length_array(cTemp)) {
-	    NAVLog("'Parsing String From ',NAVStringSurroundWith(NAVDeviceToString(vdvControl), '[', ']'),': [',cTemp,']'")
-	    if (NAVContains(cRxBuffer, cTemp)) { cRxBuffer = "''" }
-	    select {
-		active (NAVStartsWith(cTemp,'REGISTER')): {
-		    iID = atoi(NAVGetStringBetween(cTemp,'<','>'))
-		    if (iID) { BuildCommand('REGISTER','') }
-		    iIsInitialized = false
-		    NAVLog("'EXTRON_DMP_REGISTER_REQUESTED<',itoa(iID),'>'")
-		    NAVLog("'EXTRON_DMP_REGISTER<',itoa(iID),'>'")
-		}
-		active (NAVStartsWith(cTemp,'INIT')): {
-		    iIsInitialized = true
-		    BuildCommand('INIT_DONE','')
-		    NAVLog("'EXTRON_DMP_INIT_REQUESTED<',itoa(iID),'>'")
-		    NAVLog("'EXTRON_DMP_INIT_DONE<',itoa(iID),'>'")
-		}
-		active (NAVStartsWith(cTemp,'RESPONSE_MSG')): {
-		    //stack_var char cResponseRequestMess[NAV_MAX_BUFFER]
-		    stack_var char cResponseMess[NAV_MAX_BUFFER]
-		    //cResponseRequestMess = NAVGetStringBetween(cTemp,'<','|')
-		    cResponseMess = NAVGetStringBetween(cTemp,'<','>')
-		    //BuildCommand('RESPONSE_OK',cResponseRequestMess)
-		}
-	    }
-	}
+
+    while (length_array(cRxBuffer) && NAVContains(cRxBuffer, '>')) {
+        cTemp = remove_string(cRxBuffer, "'>'", 1)
+
+        if (!length_array(cTemp)) {
+            continue
+        }
+
+        NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'Parsing String From ',
+                                            NAVStringSurroundWith(NAVDeviceToString(vdvCommObject), '[', ']'),
+                                            ': [', cTemp, ']'")
+
+        if (NAVContains(cRxBuffer, cTemp)) { cRxBuffer = "''" }
+
+        select {
+            active (NAVStartsWith(cTemp, 'REGISTER')): {
+                iID = atoi(NAVGetStringBetween(cTemp, '<', '>'))
+
+                if (iID) {
+                    BuildCommand('REGISTER', '')
+                }
+
+                iIsInitialized = false
+
+                NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'EXTRON_DMP_REGISTER_REQUESTED<', itoa(iID), '>'")
+                NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'EXTRON_DMP_REGISTER<', itoa(iID), '>'")
+            }
+            active (NAVStartsWith(cTemp, 'INIT')): {
+                iIsInitialized = true
+                BuildCommand('INIT_DONE', '')
+
+                NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'EXTRON_DMP_INIT_REQUESTED<', itoa(iID), '>'")
+                NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'EXTRON_DMP_INIT_DONE<', itoa(iID), '>'")
+            }
+            active (NAVStartsWith(cTemp, 'RESPONSE_MSG')): {
+                stack_var char cResponseMess[NAV_MAX_BUFFER]
+                cResponseMess = NAVGetStringBetween(cTemp, '<', '>')
+            }
+        }
     }
 
     iSemaphore = false
@@ -153,45 +169,48 @@ define_function char[255] GetPresetCommand(integer preset) {
 (*                STARTUP CODE GOES BELOW                  *)
 (***********************************************************)
 DEFINE_START {
-    create_buffer vdvControl,cRxBuffer
+    create_buffer vdvCommObject, cRxBuffer
 }
 
 (***********************************************************)
 (*                THE EVENTS GO BELOW                      *)
 (***********************************************************)
 DEFINE_EVENT
-data_event[vdvControl] {
+
+data_event[vdvCommObject] {
     string: {
-	if (!iSemaphore) {
-	    Process()
-	}
+        if (!iSemaphore) {
+            Process()
+        }
     }
 }
+
 
 data_event[vdvObject] {
-    online: {
-	//send_command vdvControl,"'READY'"
-    }
     command: {
         stack_var char cCmdHeader[NAV_MAX_CHARS]
-	stack_var char cCmdParam[2][NAV_MAX_CHARS]
-	NAVLog(NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM, data.device, data.text))
-	cCmdHeader = DuetParseCmdHeader(data.text)
-	cCmdParam[1] = DuetParseCmdParam(data.text)
-	switch (cCmdHeader) {
-	    case 'PROPERTY': {
-	    }
-	    case 'PRESET': {
-		BuildCommand('COMMAND_MSG', GetPresetCommand(atoi(cCmdParam[1])))
-	    }
-	}
+        stack_var char cCmdParam[2][NAV_MAX_CHARS]
+
+        NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM,
+                                                data.device,
+                                                data.text))
+
+        cCmdHeader = DuetParseCmdHeader(data.text)
+        cCmdParam[1] = DuetParseCmdParam(data.text)
+
+        switch (cCmdHeader) {
+            case 'PRESET': {
+                BuildCommand('COMMAND_MSG', GetPresetCommand(atoi(cCmdParam[1])))
+            }
+        }
     }
 }
 
 
-channel_event[vdvObject,0] {
+channel_event[vdvObject, 0] {
     on: {
-	BuildCommand('COMMAND_MSG',"itoa(channel.channel),'.'")
+        BuildCommand('COMMAND_MSG', "itoa(channel.channel), '.'")
     }
 }
 

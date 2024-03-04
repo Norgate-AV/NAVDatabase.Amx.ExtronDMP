@@ -1,6 +1,6 @@
-MODULE_NAME='mExtronDMPLevelUI'	(
+MODULE_NAME='mExtronDMPLevelUI'    (
                                     dev dvTP,
-                                    dev vdvLevelObject
+                                    dev vdvObject
                                 )
 
 (***********************************************************)
@@ -49,14 +49,12 @@ DEFINE_DEVICE
 (***********************************************************)
 DEFINE_CONSTANT
 
-constant integer LEVEL_VOLUME = 1
+constant integer ADDRESS_LEVEL_PERCENTAGE    = 1
 
-constant integer ADDRESS_LEVEL_PERCENTAGE	= 1
-
-constant integer LOCK_TOGGLE	= 301
-constant integer LOCK_ON	= 302
-constant integer LOCK_OFF	= 303
-constant integer LEVEL_TOUCH	= 304
+constant integer LOCK_TOGGLE    = 301
+constant integer LOCK_ON    = 302
+constant integer LOCK_OFF    = 303
+constant integer LEVEL_TOUCH    = 304
 
 (***********************************************************)
 (*              DATA TYPE DEFINITIONS GO BELOW             *)
@@ -92,17 +90,20 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (***********************************************************)
 (* EXAMPLE: DEFINE_FUNCTION <RETURN_TYPE> <NAME> (<PARAMETERS>) *)
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
+
 define_function Update() {
     iOldLevel = iLevel
+
     if (siRequestedLevel >= 0) {
-	if (siRequestedLevel == iLevel) {
-	    siRequestedLevel = -1
-	}
-    }else {
-	if (!iLevelTouched) {
-	    send_level dvTP,LEVEL_VOLUME,iLevel
-	    send_command dvTP,"'^TXT-',itoa(ADDRESS_LEVEL_PERCENTAGE),',0,',itoa(NAVScaleValue(type_cast(iLevel),255,100,0)),'%'"
-	}
+        if (siRequestedLevel == iLevel) {
+            siRequestedLevel = -1
+        }
+    }
+    else {
+        if (!iLevelTouched) {
+            send_level dvTP, VOL_LVL, iLevel
+            send_command dvTP, "'^TXT-', itoa(ADDRESS_LEVEL_PERCENTAGE), ', 0, ', itoa(NAVScaleValue(type_cast(iLevel), 255, 100, 0)), '%'"
+        }
     }
 }
 
@@ -112,68 +113,71 @@ define_function Update() {
 DEFINE_START {
 
 }
+
 (***********************************************************)
 (*                THE EVENTS GO BELOW                      *)
 (***********************************************************)
 DEFINE_EVENT
-level_event[vdvLevelObject,LEVEL_VOLUME] {
+
+level_event[vdvObject, VOL_LVL] {
     iLevel = level.value
     Update()
 }
 
-button_event[dvTP,0] {
+
+button_event[dvTP, 0] {
     push: {
-	switch (button.input.channel) {
-	    case VOL_UP:
-	    case VOL_DN: {
-		if (!iLocked) {
-		    to[vdvLevelObject,button.input.channel]
-		}
-	    }
-	    //case VOL_MUTE: { to[vdvStateObject,button.input.channel] }
-	    case LOCK_TOGGLE: {
-		iLocked = !iLocked
-	    }
-	    case LOCK_ON: {
-		iLocked = true
-	    }
-	    case LOCK_OFF: {
-		iLocked = false
-	    }
-	    case LEVEL_TOUCH: {
-		iLevelTouched = true
-	    }
-	}
+        switch (button.input.channel) {
+            case VOL_UP:
+            case VOL_DN: {
+                if (!iLocked) {
+                    to[vdvObject, button.input.channel]
+                }
+            }
+            case LOCK_TOGGLE: {
+                iLocked = !iLocked
+            }
+            case LOCK_ON: {
+                iLocked = true
+            }
+            case LOCK_OFF: {
+                iLocked = false
+            }
+            case LEVEL_TOUCH: {
+                iLevelTouched = true
+            }
+        }
     }
     release: {
-	switch (button.input.channel) {
-	    case LEVEL_TOUCH: {
-		iLevelTouched = false
-	    }
-	}
+        switch (button.input.channel) {
+            case LEVEL_TOUCH: {
+                iLevelTouched = false
+            }
+        }
     }
 }
 
-level_event[dvTP,LEVEL_VOLUME] {
+
+level_event[dvTP, VOL_LVL] {
     if (iLevelTouched && !iLocked) {
-	siRequestedLevel = level.value
-	send_command vdvLevelObject,"'VOLUME-',itoa(siRequestedLevel)"
-	send_command dvTP,"'^TXT-',itoa(ADDRESS_LEVEL_PERCENTAGE),',0,',itoa(NAVScaleValue(type_cast(siRequestedLevel),255,100,0)),'%'"
+        siRequestedLevel = level.value
+        send_command vdvObject, "'VOLUME-', itoa(siRequestedLevel)"
+        send_command dvTP, "'^TXT-', itoa(ADDRESS_LEVEL_PERCENTAGE), ', 0, ', itoa(NAVScaleValue(type_cast(siRequestedLevel), 255, 100, 0)), '%'"
     }
 }
+
 
 data_event[dvTP] {
     online: {
-	Update()
+        Update()
     }
 }
 
 
 timeline_event[TL_NAV_FEEDBACK] {
-    //[dvTP,VOL_MUTE]	= ([vdvStateObject,VOL_MUTE_FB])
-    [dvTP,LOCK_TOGGLE]	= (iLocked)
-    [dvTP,LOCK_ON]	= (iLocked)
-    [dvTP,LOCK_OFF]	= (!iLocked)
+    [dvTP, LOCK_TOGGLE]    = (iLocked)
+    [dvTP, LOCK_ON]    = (iLocked)
+    [dvTP, LOCK_OFF]    = (!iLocked)
 }
 
 (***********************************************************)
