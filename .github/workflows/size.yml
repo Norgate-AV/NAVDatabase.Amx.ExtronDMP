@@ -2,8 +2,8 @@ name: Size Limit
 
 on: [pull_request]
 
-permissions:
-  pull-requests: write
+# permissions:
+#   pull-requests: write
 
 jobs:
   size:
