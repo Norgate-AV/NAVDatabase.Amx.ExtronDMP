@@ -4,7 +4,9 @@ on: [pull_request]
 
 jobs:
   size:
-    runs-on: ubuntu-latest
+    name: Size Limit
+
+    runs-on: [self-hosted, windows, server]
 
     env:
       CI_JOB_NUMBER: 1
