@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.1](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.0.0...v1.0.1) (2024-03-05)
+
+### 🐛 Bug Fixes
+
+-   fix path so assets upload to release ([a3de133](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/a3de133b2830e4f82295969f3cb19b9afa5c9213))
+
 ## 1.0.0 (2024-03-04)
 
 ### 🌟 Features
