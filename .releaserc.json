@@ -105,7 +105,7 @@
             {
                 "assets": [
                     {
-                        "path": "./Source/**/*.{tko,TKO}"
+                        "path": "./src/**/*.{tko,TKO}"
                     },
                     {
                         "path": "./*.archive.zip"
