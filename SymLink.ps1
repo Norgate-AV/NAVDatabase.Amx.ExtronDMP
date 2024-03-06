@@ -1,3 +1,4 @@
+#!/usr/bin/env pwsh
 #Requires -RunAsAdministrator
 
 <#
@@ -35,62 +36,70 @@ SOFTWARE.
 
 param (
     [Parameter(Mandatory = $false)]
-    [string]
-    $Path = ".",
-
-    [Parameter(Mandatory = $false)]
+    [ValidateNotNullOrEmpty()]
     [string]
     $ModulePath = "C:\Program Files (x86)\Common Files\AMXShare\Duet\module",
 
     [Parameter(Mandatory = $false)]
+    [ValidateNotNullOrEmpty()]
     [string]
-    $IncludePath = "C:\Program Files (x86)\Common Files\AMXShare\AXIs"
+    $IncludePath = "C:\Program Files (x86)\Common Files\AMXShare\AXIs",
+
+    [Parameter(Mandatory = $false)]
+    [switch]
+    $Delete = $false
 )
 
+$prevPWD = $PWD
+Set-Location $PSScriptRoot
+
 try {
-    $Path = Resolve-Path $Path
-
-    $directories = Get-ChildItem -Path $Path -Directory -Recurse | Where-Object { $_.FullName -notmatch "(.git|.history|node_modules)" }
-
-    $moduleFiles = $directories | Get-ChildItem -File -Include *.axs -ErrorAction SilentlyContinue
-    $includeFiles = $directories | Get-ChildItem -File -Include *.axi -ErrorAction SilentlyContinue
+    $moduleFiles = Get-ChildItem -File "**/*.tko" -Recurse | Where-Object { $_.FullName -notmatch "(.git|.history|node_modules)" }
+    $includeFiles = Get-ChildItem -File "**/*.axi" -Recurse | Where-Object { $_.FullName -notmatch "(.git|.history|node_modules)" }
 
     if (!$moduleFiles -and !$includeFiles) {
-        Write-Host "No files found in $Path" -ForegroundColor Yellow
-        exit
+        Write-Host "No files found"
+        exit 1
     }
+
+    $ModulePath = Resolve-Path $ModulePath
+    $IncludePath = Resolve-Path $IncludePath
+
+    !$Delete ? (Write-Host "Creating symlinks...") : (Write-Host "Deleting symlinks...")
 
     foreach ($file in $includeFiles) {
-        $path = Join-Path -Path $IncludePath -ChildPath $file.Name
-        $target = $file.FullName
+        $linkPath = "$IncludePath/$($file.Name)"
 
-        Write-Host "Creating symlink: $path -> $target" -ForegroundColor Green
-        New-Item -ItemType SymbolicLink -Path $path -Target $target -Force | Out-Null
-    }
-
-    foreach ($file in $moduleFiles) {
-        if (!(Test-Path $($file.FullName -replace ".axs", ".tko"))) {
-            Write-Host "TKO file not found for $file" -ForegroundColor Yellow
+        if ($Delete) {
+            Write-Verbose "Deleting symlink: $linkPath"
+            Remove-Item -Path $linkPath -Force | Out-Null
             continue
         }
 
-        $path = Join-Path -Path $ModulePath -ChildPath $file.Name
+
         $target = $file.FullName
+        Write-Verbose "Creating symlink: $linkPath -> $target"
+        New-Item -ItemType SymbolicLink -Path $linkPath -Target $target -Force | Out-Null
+    }
 
-        Write-Host "Creating symlink: $path -> $target" -ForegroundColor Green
-        New-Item -ItemType SymbolicLink -Path $path -Target $target -Force | Out-Null
+    foreach ($file in $moduleFiles) {
+        $linkPath = "$ModulePath/$($file.Name)"
 
-        $path = Join-Path -Path $ModulePath -ChildPath $($file.Name -replace ".axs", ".tko")
-        $target = $file.FullName -replace ".axs", ".tko"
+        if ($Delete) {
+            Write-Verbose "Deleting symlink: $linkPath"
+            Remove-Item -Path $linkPath -Force | Out-Null
+            continue
+        }
 
-        Write-Host "Creating symlink: $path -> $target" -ForegroundColor Green
-        New-Item -ItemType SymbolicLink -Path $path -Target $target -Force | Out-Null
+        $target = $file.FullName
+        Write-Verbose "Creating symlink: $linkPath -> $target"
+        New-Item -ItemType SymbolicLink -Path $linkPath -Target $target -Force | Out-Null
     }
 }
 catch {
     Write-Host $_.Exception.GetBaseException().Message -ForegroundColor Red
     exit 1
 }
-
-Write-Host
-Read-Host -Prompt "Press any key to exit..."
+finally {
+    Set-Location $prevPWD
+}
