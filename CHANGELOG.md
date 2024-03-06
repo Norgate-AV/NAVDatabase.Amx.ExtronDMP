@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.0](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.0.1...v1.1.0) (2024-03-06)
+
+### 🌟 Features
+
+-   log socket errors to error log ([281cfbf](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/281cfbfbf7f8a3be05bcf329098121ecb348de9c))
+
+### 🤖 CI
+
+-   update ci workflow for semantic-release ([9e226fd](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/9e226fd3e90562fa04d21c335a354d66a55a026e))
+
 ## [1.0.1](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.0.0...v1.0.1) (2024-03-05)
 
 ### 🐛 Bug Fixes
