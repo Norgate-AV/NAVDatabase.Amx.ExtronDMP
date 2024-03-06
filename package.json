@@ -34,6 +34,7 @@
         "@commitlint/config-conventional": "^19.0.3",
         "@norgate-av/genlinx": "^2.2.1",
         "@semantic-release/changelog": "^6.0.3",
+        "@semantic-release/exec": "^6.0.3",
         "@semantic-release/git": "^10.0.1",
         "all-contributors-cli": "^6.24.0",
         "commitizen": "^4.3.0",
