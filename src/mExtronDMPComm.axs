@@ -399,6 +399,9 @@ data_event[dvPort] {
             module.Device.SocketConnection.IsAuthenticated = false
             module.Device.IsCommunicating = false
         }
+
+        NAVErrorLog(NAV_LOG_LEVEL_ERROR,
+                    "'mExtronDMPComm => OnError: ', NAVGetSocketError(data.number)");
     }
 }
 
@@ -433,6 +436,7 @@ data_event[vdvCommObjects] {
     }
     command: {
         stack_var char cmdHeader[NAV_MAX_CHARS]
+        stack_var _NAVSnapiMessage message
         stack_var integer index
 
         NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
@@ -440,16 +444,17 @@ data_event[vdvCommObjects] {
                                                 data.device,
                                                 data.text))
 
+        NAVParseSnapiMessage(data.text, message)
         index = get_last(vdvCommObjects)
 
-        cmdHeader = DuetParseCmdHeader(data.text)
+        // cmdHeader = DuetParseCmdHeader(data.text)
 
-        switch (cmdHeader) {
+        switch (message.Header) {
             case 'COMMAND_MSG': {
-                NAVDevicePriorityQueueEnqueue(priorityQueue, "cmdHeader, data.text", true)
+                NAVDevicePriorityQueueEnqueue(priorityQueue, "message.Header, data.text", true)
             }
             case 'POLL_MSG': {
-                NAVDevicePriorityQueueEnqueue(priorityQueue, "cmdHeader, data.text", false)
+                NAVDevicePriorityQueueEnqueue(priorityQueue, "message.Header, data.text", false)
             }
             case 'RESPONSE_OK': {
                 ObjectResponseOk(data)
