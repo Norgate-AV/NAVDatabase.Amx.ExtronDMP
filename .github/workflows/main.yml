@@ -100,6 +100,8 @@ jobs:
         if: github.ref == 'refs/heads/master'
         uses: cycjimmy/semantic-release-action@v4
         with:
+          branches: |
+            ["master"]
           extra_plugins: |
             @semantic-release/changelog
             @semantic-release/exec
