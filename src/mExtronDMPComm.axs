@@ -401,7 +401,7 @@ data_event[dvPort] {
         }
 
         NAVErrorLog(NAV_LOG_LEVEL_ERROR,
-                    "'mExtronDMPComm => OnError: ', NAVGetSocketError(data.number)");
+                    "'mExtronDMPComm => OnError: ', NAVGetSocketError(type_cast(data.number))");
     }
 }
 
