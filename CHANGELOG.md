@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.1.1...v1.2.0) (2024-03-08)
+
+### 🌟 Features
+
+-   add dispatch step to workflow to trigger scoop excavator ([e207709](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/e207709bd42507297dae101c96b63ac735b3d0e9))
+
+### ✨ Refactor
+
+-   **semantic-release:** add branches input ([87bf047](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/87bf0473bd42ffd759c80565aa93ca6a68b503a3))
+-   **semantic-release:** use full length sha for commit ([57f7c60](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/57f7c60ccd9f61358383110e981e0d49ba0503d4))
+-   **semantic-release:** use specific commit for action ([6c6407f](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/6c6407fc94594e26286dd95f74ecdc51ab60eb25))
+
 ## [1.1.1](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.1.0...v1.1.1) (2024-03-08)
 
 ### 🐛 Bug Fixes
