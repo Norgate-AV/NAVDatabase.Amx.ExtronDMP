@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.1](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.1.0...v1.1.1) (2024-03-08)
+
+### 🐛 Bug Fixes
+
+-   fix type cast warning ([5a477e6](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/5a477e63d57641ea4c2e4a93cadf86e1c9a13ca1))
+
+### ✨ Refactor
+
+-   remove unused code ([5b2aeaf](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/5b2aeafc8a89f4973bafaad736fb3be2bff50165))
+
+### 🤖 CI
+
+-   remove axi files from archive as not needed in deployment ([46c8e72](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/46c8e72cbad154886b4c1df6cdca67f0e4f0c3de))
+
 ## [1.1.0](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.0.1...v1.1.0) (2024-03-06)
 
 ### 🌟 Features
