@@ -41,11 +41,6 @@ param (
     $ModulePath = "C:\Program Files (x86)\Common Files\AMXShare\Duet\module",
 
     [Parameter(Mandatory = $false)]
-    [ValidateNotNullOrEmpty()]
-    [string]
-    $IncludePath = "C:\Program Files (x86)\Common Files\AMXShare\AXIs",
-
-    [Parameter(Mandatory = $false)]
     [switch]
     $Delete = $false
 )
@@ -54,35 +49,18 @@ $prevPWD = $PWD
 Set-Location $PSScriptRoot
 
 try {
-    $moduleFiles = Get-ChildItem -File "**/*.tko" -Recurse | Where-Object { $_.FullName -notmatch "(.git|.history|node_modules)" }
-    $includeFiles = Get-ChildItem -File "**/*.axi" -Recurse | Where-Object { $_.FullName -notmatch "(.git|.history|node_modules)" }
+    $files = Get-ChildItem -File "**/*.tko" -Recurse | Where-Object { $_.FullName -notmatch "(.git|.history|node_modules)" }
 
-    if (!$moduleFiles -and !$includeFiles) {
+    if (!$files) {
         Write-Host "No files found"
         exit 1
     }
 
     $ModulePath = Resolve-Path $ModulePath
-    $IncludePath = Resolve-Path $IncludePath
 
     !$Delete ? (Write-Host "Creating symlinks...") : (Write-Host "Deleting symlinks...")
 
-    foreach ($file in $includeFiles) {
-        $linkPath = "$IncludePath/$($file.Name)"
-
-        if ($Delete) {
-            Write-Verbose "Deleting symlink: $linkPath"
-            Remove-Item -Path $linkPath -Force | Out-Null
-            continue
-        }
-
-
-        $target = $file.FullName
-        Write-Verbose "Creating symlink: $linkPath -> $target"
-        New-Item -ItemType SymbolicLink -Path $linkPath -Target $target -Force | Out-Null
-    }
-
-    foreach ($file in $moduleFiles) {
+    foreach ($file in $files) {
         $linkPath = "$ModulePath/$($file.Name)"
 
         if ($Delete) {
