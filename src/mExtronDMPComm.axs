@@ -435,7 +435,6 @@ data_event[vdvCommObjects] {
         SendObjectRegistrationRequest(get_last(vdvCommObjects))
     }
     command: {
-        stack_var char cmdHeader[NAV_MAX_CHARS]
         stack_var _NAVSnapiMessage message
         stack_var integer index
 
@@ -446,8 +445,6 @@ data_event[vdvCommObjects] {
 
         NAVParseSnapiMessage(data.text, message)
         index = get_last(vdvCommObjects)
-
-        // cmdHeader = DuetParseCmdHeader(data.text)
 
         switch (message.Header) {
             case 'COMMAND_MSG': {
