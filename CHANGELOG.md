@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.1](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.2.0...v1.2.1) (2024-03-08)
+
+### 🐛 Bug Fixes
+
+-   fix json formatting in dispatcher ([ed8827d](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/ed8827da381880f6f7883a22e72088d688c45cd5))
+
 ## [1.2.0](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.1.1...v1.2.0) (2024-03-08)
 
 ### 🌟 Features
