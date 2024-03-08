@@ -136,6 +136,10 @@ jobs:
           client-payload: |-
             {
               "repo": {
-                "name": "${{ github.repository }}"
-              },
+                "name": "${{ github.repository }}",
+                "owner": "${{ github.repository_owner }}",
+                "ref": "${{ github.ref }}",
+                "sha": "${{ github.sha }}",
+                "tag": "${{ steps.release.outputs.new_release_git_tag }}"
+              }
             }
