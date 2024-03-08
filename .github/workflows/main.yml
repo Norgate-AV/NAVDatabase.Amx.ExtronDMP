@@ -100,7 +100,7 @@ jobs:
         if: github.ref == 'refs/heads/master'
 
         # v4 doesn't seem to be working, so using a specific commit for now
-        uses: cycjimmy/semantic-release-action@6d88447
+        uses: cycjimmy/semantic-release-action@6d88447fcd3237e1d617f4f663e5ad79a6bf45b1
         with:
           extra_plugins: |
             @semantic-release/changelog
