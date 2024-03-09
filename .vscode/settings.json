@@ -36,5 +36,6 @@
     },
     "editor.codeActionsOnSave": {
         "source.fixAll.markdownlint": "explicit"
-    }
+    },
+    "github-actions.workflows.pinned.workflows": [".github/workflows/main.yml"]
 }
