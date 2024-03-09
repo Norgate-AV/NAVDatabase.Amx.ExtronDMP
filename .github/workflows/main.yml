@@ -139,7 +139,7 @@ jobs:
                 "name": "${{ github.repository }}",
                 "owner": "${{ github.repository_owner }}",
                 "ref": "${{ github.ref }}",
-                "sha": "${{ github.sha }}",
+                "sha": "${{ steps.release.outputs.new_release_git_head }}",
                 "tag": "${{ steps.release.outputs.new_release_git_tag }}"
               }
             }
