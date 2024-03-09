@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.2](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.2.1...v1.2.2) (2024-03-09)
+
+### 🐛 Bug Fixes
+
+-   use git head for sha in dispatch payload ([397b088](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/397b088527b78374467b9afa7ddea2509e3bb7b9))
+
 ## [1.2.1](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.2.0...v1.2.1) (2024-03-08)
 
 ### 🐛 Bug Fixes
