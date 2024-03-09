@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.3](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.2.2...v1.2.3) (2024-03-09)
+
+### ✨ Refactor
+
+-   **semantic-release:** dont add axis to release assets ([3831f57](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/3831f57355791b837eb35c24c903abf14ddda17b))
+
 ## [1.2.2](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.2.1...v1.2.2) (2024-03-09)
 
 ### 🐛 Bug Fixes
