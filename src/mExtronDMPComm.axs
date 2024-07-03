@@ -285,13 +285,23 @@ define_function SendHeartbeat() {
 }
 
 
+define_function SocketConnectionReset() {
+    NAVTimelineStop(TL_SOCKET_CHECK)
+
+    NAVClientSocketClose(dvPort.PORT)
+
+    NAVTimelineStart(TL_SOCKET_CHECK, socketCheck, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
+}
+
+
 #IF_DEFINED USING_NAV_MODULE_BASE_PROPERTY_EVENT_CALLBACK
 define_function NAVModulePropertyEventCallback(_NAVModulePropertyEvent event) {
     switch (upper_string(event.Name)) {
         case 'IP_ADDRESS': {
             module.Device.SocketConnection.Address = NAVTrimString(event.Args[1])
             module.Device.SocketConnection.Port = NAV_TELNET_PORT
-            NAVTimelineStart(TL_SOCKET_CHECK, socketCheck, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
+
+            SocketConnectionReset()
         }
         case 'PASSWORD': {
             credential.Password = NAVTrimString(event.Args[1])
