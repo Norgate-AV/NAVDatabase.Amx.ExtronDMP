@@ -236,10 +236,9 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
                                 "'mExtronDMPComm => Found tag ', object[x].Api.Tag[z], ' in response from device: ', args.Data")
                     SendObjectResponse(x, args.Data)
 
+                    x = length_array(vdvCommObjects) + 1
                     break
                 }
-
-                break
             }
         }
     }
