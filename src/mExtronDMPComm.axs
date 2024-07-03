@@ -84,10 +84,10 @@ volatile long socketCheck[] = { 3000 }
 volatile _DspObject object[MAX_OBJECTS]
 volatile _NAVCredential credential
 
-volatile integer initializing
+volatile integer initializing = false
 volatile integer initializingObjectID
 
-volatile integer ready
+volatile integer ready = false
 
 
 (***********************************************************)
