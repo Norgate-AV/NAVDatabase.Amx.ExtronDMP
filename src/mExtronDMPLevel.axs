@@ -9,6 +9,7 @@ MODULE_NAME='mExtronDMPLevel'	(
 #DEFINE USING_NAV_STRING_GATHER_CALLBACK
 #include 'NAVFoundation.ModuleBase.axi'
 #include 'NAVFoundation.Math.axi'
+#include 'NAVFoundation.InterModuleApi.axi'
 #include 'LibExtronDMP.axi'
 
 /*
@@ -92,20 +93,20 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
 
 define_function Register(_DspObject object) {
-    if (!registerRequested || !registerReady || !object.Id) {
+    if (!registerRequested || !registerReady || !object.Api.Id) {
         return
     }
 
     ObjectTagInit(object)
 
-    SendObjectMessage(vdvCommObject,
-                        BuildObjectMessage(OBJECT_REGISTRATION_MESSAGE_HEADER,
-                                            object.Id,
-                                            GetObjectTagList(object)))
+    NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                        NAVInterModuleApiBuildObjectMessage(OBJECT_REGISTRATION_MESSAGE_HEADER,
+                                            object.Api.Id,
+                                            NAVInterModuleApiGetObjectTagList(object.Api)))
 
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPLevel => Object Registering: ID-', itoa(object.Id)")
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPLevel => Object Registering: ID-', itoa(object.Api.Id)")
 
-    object.IsRegistered = true
+    object.Api.IsRegistered = true
 }
 
 
@@ -118,61 +119,66 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
                                             vdvCommObject,
                                             args.Data))
 
-    if (NAVContains(module.RxBuffer.Data, args.Data)) {
-        module.RxBuffer.Data = "''"
-    }
+    // if (NAVContains(module.RxBuffer.Data, args.Data)) {
+    //     module.RxBuffer.Data = "''"
+    // }
 
-    id = GetObjectId(args.Data)
-    if (id != object.Properties.Id) {
-        return
-    }
+    id = NAVInterModuleApiGetObjectId(args.Data)
+    // if (id != object.Properties.Id) {
+    //     return
+    // }
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                "'mExtronDMPLevel => Object ID-', itoa(id), ' Data-', args.Data");
 
     select {
         active (NAVStartsWith(args.Data, OBJECT_REGISTRATION_MESSAGE_HEADER)): {
+            // object.Properties.Api.Id = NAVInterModuleApiGetObjectId(args.Data)
+            object.Properties.Api.Id = id
+
             registerRequested = true
             NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                        "'mExtronDMPLevel => Object Registration Requested: ID-', itoa(object.Properties.Id)")
+                        "'mExtronDMPLevel => Object Registration Requested: ID-', itoa(object.Properties.Api.Id)")
 
             Register(object.Properties)
         }
         active (NAVStartsWith(args.Data, OBJECT_INIT_MESSAGE_HEADER)): {
-            object.Properties.IsInitialized = false
+            object.Properties.Api.IsInitialized = false
             NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                        "'mExtronDMPLevel => Object Initialization Requested: ID-', itoa(object.Properties.Id)")
+                        "'mExtronDMPLevel => Object Initialization Requested: ID-', itoa(object.Properties.Api.Id)")
 
             GetInitialized(object.Properties)
         }
         active (NAVStartsWith(args.Data, OBJECT_RESPONSE_MESSAGE_HEADER)): {
             stack_var char response[NAV_MAX_BUFFER]
 
-            response = GetObjectFullMessage(args.Data)
+            response = NAVInterModuleApiGetObjectFullMessage(args.Data)
 
             switch (object.Properties.Attribute.Id) {
                 case ATTRIBUTE_ID_GAIN: {
                     stack_var integer x
 
-                    for (x = 1; x <= length_array(object.Properties.Tag); x++) {
-                        if (!NAVContains(response, object.Properties.Tag[x])) {
+                    for (x = 1; x <= length_array(object.Properties.Api.Tag); x++) {
+                        if (!NAVContains(response, object.Properties.Api.Tag[x])) {
                             continue
                         }
 
-                        GetObjectLevel(response, object.Properties.Tag[x])
+                        GetObjectLevel(response, object.Properties.Api.Tag[x])
                     }
                 }
                 case ATTRIBUTE_ID_GROUP: {
                     stack_var integer x
 
-                    for (x = 1; x <= length_array(object.Properties.Tag); x++) {
-                        if (!NAVContains(response, object.Properties.Tag[x])) {
+                    for (x = 1; x <= length_array(object.Properties.Api.Tag); x++) {
+                        if (!NAVContains(response, object.Properties.Api.Tag[x])) {
                             continue
                         }
 
-                        if (NAVContains(object.Properties.Tag[x], ATTRIBUTE_RESPONSE_HEADER_GROUP_SOFT_LIMITS)) {
-                            GetObjectLimits(response, object.Properties.Tag[x])
+                        if (NAVContains(object.Properties.Api.Tag[x], ATTRIBUTE_RESPONSE_HEADER_GROUP_SOFT_LIMITS)) {
+                            GetObjectLimits(response, object.Properties.Api.Tag[x])
                             continue
                         }
 
-                        GetObjectLevel(response, object.Properties.Tag[x])
+                        GetObjectLevel(response, object.Properties.Api.Tag[x])
                     }
                 }
             }
@@ -188,18 +194,18 @@ define_function GetObjectLevel(char response[], char tag[]) {
     object.Level.Actual = atoi(response)
     UpdateObjectLevel(object)
 
-    if (object.Properties.IsInitialized) {
+    if (object.Properties.Api.IsInitialized) {
         return
     }
 
-    SendObjectMessage(vdvCommObject,
-                        BuildObjectMessage(OBJECT_INIT_DONE_MESSAGE_HEADER,
-                                            object.Properties.Id,
+    NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                        NAVInterModuleApiBuildObjectMessage(OBJECT_INIT_DONE_MESSAGE_HEADER,
+                                            object.Properties.Api.Id,
                                             ''))
 
     NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                "'mExtronDMPLevel => Object Initialization Complete: ID-', itoa(object.Properties.Id)")
-    object.Properties.IsInitialized = true
+                "'mExtronDMPLevel => Object Initialization Complete: ID-', itoa(object.Properties.Api.Id)")
+    object.Properties.Api.IsInitialized = true
 }
 
 
@@ -226,19 +232,19 @@ define_function GetObjectLimits(char response[], char tag[]) {
 define_function GetInitialized(_DspObject object) {
     switch (object.Attribute.Id) {
         case ATTRIBUTE_ID_GAIN: {
-            SendObjectMessage(vdvCommObject,
-                                BuildObjectMessage(OBJECT_QUERY_MESSAGE_HEADER,
-                                                    object.Id,
+            NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                                NAVInterModuleApiBuildObjectMessage(OBJECT_QUERY_MESSAGE_HEADER,
+                                                    object.Api.Id,
                                                     BuildPayload(object, '')))
         }
         case ATTRIBUTE_ID_GROUP: {
-            SendObjectMessage(vdvCommObject,
-                                BuildObjectMessage(OBJECT_QUERY_MESSAGE_HEADER,
-                                                    object.Id,
+            NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                                NAVInterModuleApiBuildObjectMessage(OBJECT_QUERY_MESSAGE_HEADER,
+                                                    object.Api.Id,
                                                     BuildCustomPayload('L', object.Attribute.Value[1], '')))
-            SendObjectMessage(vdvCommObject,
-                                BuildObjectMessage(OBJECT_QUERY_MESSAGE_HEADER,
-                                                    object.Id,
+            NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                                NAVInterModuleApiBuildObjectMessage(OBJECT_QUERY_MESSAGE_HEADER,
+                                                    object.Api.Id,
                                                     BuildPayload(object, '')))
         }
     }
@@ -285,30 +291,30 @@ define_function RampLevel() {
     select {
         active ([vdvObject, VOL_UP]): {
             if (object.Properties.Attribute.Id == ATTRIBUTE_ID_GAIN) {
-                SendObjectMessage(vdvCommObject,
-                                    BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
-                                                        object.Properties.Id,
+                NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                                    NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                        object.Properties.Api.Id,
                                                         BuildPayload(object.Properties, itoa(object.Level.Actual + 10))))
                 return
             }
 
-            SendObjectMessage(vdvCommObject,
-                                BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
-                                                    object.Properties.Id,
+            NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                                NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                    object.Properties.Api.Id,
                                                     BuildPayload(object.Properties, '10+')))
         }
         active ([vdvObject, VOL_DN]): {
             if (object.Properties.Attribute.Id == ATTRIBUTE_ID_GAIN) {
-                SendObjectMessage(vdvCommObject,
-                                    BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
-                                                        object.Properties.Id,
+                NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                                    NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                        object.Properties.Api.Id,
                                                         BuildPayload(object.Properties, itoa(object.Level.Actual - 10))))
                 return
             }
 
-            SendObjectMessage(vdvCommObject,
-                                BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
-                                                    object.Properties.Id,
+            NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                                NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                    object.Properties.Api.Id,
                                                     BuildPayload(object.Properties, '10-')))
         }
     }
@@ -319,7 +325,7 @@ define_function ObjectChannelEvent(integer channel) {
     switch (channel) {
         case VOL_UP:
         case VOL_DN: {
-            if (!object.Properties.IsInitialized) {
+            if (!object.Properties.Api.IsInitialized) {
                 return
             }
 
@@ -364,8 +370,8 @@ data_event[vdvObject] {
         NAVParseSnapiMessage(data.text, message)
 
         switch (message.Header) {
-            case 'REGISTER': {
-                object.Properties.Id = GetObjectId(message.Parameter[1])
+            case OBJECT_REGISTRATION_MESSAGE_HEADER: {
+                // object.Properties.Id = GetObjectId(message.Parameter[1])
 
                 registerReady = true
 
@@ -376,63 +382,63 @@ data_event[vdvObject] {
                     NAVCommand(data.device, "'PROPERTY-LABEL,', label")
                 }
             }
-            case 'INIT': {
+            case OBJECT_INIT_MESSAGE_HEADER: {
                 GetInitialized(object.Properties)
             }
             case 'VOLUME': {
-                if (!object.Properties.IsInitialized) {
+                if (!object.Properties.Api.IsInitialized) {
                     break
                 }
 
                 switch (message.Parameter[1]) {
                     case 'QUARTER': {
-                        SendObjectMessage(vdvCommObject,
-                                            BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
-                                                                object.Properties.Id,
+                        NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                                            NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                                object.Properties.Api.Id,
                                                                 BuildPayload(object.Properties,
                                                                             itoa(NAVQuarterPointOfRange(object.MaxLevel, object.MinLevel)))))
                     }
                     case 'HALF': {
-                        SendObjectMessage(vdvCommObject,
-                                            BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
-                                                                object.Properties.Id,
+                        NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                                            NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                                object.Properties.Api.Id,
                                                                 BuildPayload(object.Properties,
                                                                             itoa(NAVHalfPointOfRange(object.MaxLevel, object.MinLevel)))))
                     }
                     case 'THREE_QUARTERS': {
-                        SendObjectMessage(vdvCommObject,
-                                            BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
-                                                                object.Properties.Id,
+                        NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                                            NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                                object.Properties.Api.Id,
                                                                 BuildPayload(object.Properties,
                                                                             itoa(NAVThreeQuarterPointOfRange(object.MaxLevel, object.MinLevel)))))
                     }
                     case 'FULL': {
-                        SendObjectMessage(vdvCommObject,
-                                            BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
-                                                                object.Properties.Id,
+                        NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                                            NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                                object.Properties.Api.Id,
                                                                 BuildPayload(object.Properties, itoa(object.MaxLevel))))
                     }
                     case 'INC': {
                         if (object.Level.Actual < object.MaxLevel) {
-                            SendObjectMessage(vdvCommObject,
-                                                BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
-                                                                    object.Properties.Id,
+                            NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                                                NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                                    object.Properties.Api.Id,
                                                                     BuildPayload(object.Properties, itoa(object.Level.Actual + 10))))
                         }
                     }
                     case 'DEC': {
                         if (object.Level.Actual > object.MinLevel) {
-                            SendObjectMessage(vdvCommObject,
-                                                BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
-                                                                    object.Properties.Id,
+                            NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                                                NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                                    object.Properties.Api.Id,
                                                                     BuildPayload(object.Properties, itoa(object.Level.Actual - 10))))
                         }
                     }
                     case 'ABS': {
                         if ((atoi(message.Parameter[2]) >= object.MinLevel) && (atoi(message.Parameter[2]) <= object.MinLevel)) {
-                            SendObjectMessage(vdvCommObject,
-                                                BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
-                                                                    object.Properties.Id,
+                            NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                                                NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                                    object.Properties.Api.Id,
                                                                     BuildPayload(object.Properties, message.Parameter[2])))
                         }
                     }
@@ -442,9 +448,9 @@ data_event[vdvObject] {
                         level = NAVScaleValue(atoi(message.Parameter[1]), 255, (object.MinLevel - object.MinLevel), object.MinLevel)
 
                         if ((level >= object.MinLevel) && (level <= object.MinLevel)) {
-                            SendObjectMessage(vdvCommObject,
-                                                BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
-                                                                    object.Properties.Id,
+                            NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                                                NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                                    object.Properties.Api.Id,
                                                                     BuildPayload(object.Properties, itoa(level))))
                         }
                     }

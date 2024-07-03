@@ -8,6 +8,7 @@ MODULE_NAME='mExtronDMPState'	(
 #DEFINE USING_NAV_MODULE_BASE_PROPERTY_EVENT_CALLBACK
 #DEFINE USING_NAV_STRING_GATHER_CALLBACK
 #include 'NAVFoundation.ModuleBase.axi'
+#include 'NAVFoundation.InterModuleApi.axi'
 #include 'LibExtronDMP.axi'
 
 /*
@@ -84,20 +85,20 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
 
 define_function Register(_DspObject object) {
-    if (!registerRequested || !registerReady || !object.Id) {
+    if (!registerRequested || !registerReady || !object.Api.Id) {
         return
     }
 
     ObjectTagInit(object)
 
-    SendObjectMessage(vdvCommObject,
-                        BuildObjectMessage(OBJECT_REGISTRATION_MESSAGE_HEADER,
-                                            object.Id,
-                                            GetObjectTagList(object)))
+    NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                        NAVInterModuleApiBuildObjectMessage(OBJECT_REGISTRATION_MESSAGE_HEADER,
+                                            object.Api.Id,
+                                            NAVInterModuleApiGetObjectTagList(object.Api)))
 
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPState => Object Registering: ID-', itoa(object.Id)")
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPState => Object Registering: ID-', itoa(object.Api.Id)")
 
-    object.IsRegistered = true
+    object.Api.IsRegistered = true
 }
 
 
@@ -110,27 +111,31 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
                                             vdvCommObject,
                                             args.Data))
 
-    if (NAVContains(module.RxBuffer.Data, args.Data)) {
-        module.RxBuffer.Data = "''"
-    }
+    // if (NAVContains(module.RxBuffer.Data, args.Data)) {
+    //     module.RxBuffer.Data = "''"
+    // }
 
-    id = GetObjectId(args.Data)
-    if (id != object.Properties.Id) {
-        return
-    }
+    id = NAVInterModuleApiGetObjectId(args.Data)
+    // if (id != object.Properties.Id) {
+    //     return
+    // }
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                "'mExtronDMPState => Object ID-', itoa(id), ' Data-', args.Data");
 
     select {
         active (NAVStartsWith(args.Data, OBJECT_REGISTRATION_MESSAGE_HEADER)): {
+            object.Properties.Api.Id = id
+
             registerRequested = true
             NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                        "'mExtronDMPState => Object Registration Requested: ID-', itoa(object.Properties.Id)")
+                        "'mExtronDMPState => Object Registration Requested: ID-', itoa(object.Properties.Api.Id)")
 
             Register(object.Properties)
         }
         active (NAVStartsWith(args.Data, OBJECT_INIT_MESSAGE_HEADER)): {
-            object.Properties.IsInitialized = false
+            object.Properties.Api.IsInitialized = false
             NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                        "'mExtronDMPState => Object Initialization Requested: ID-', itoa(object.Properties.Id)")
+                        "'mExtronDMPState => Object Initialization Requested: ID-', itoa(object.Properties.Api.Id)")
 
             GetInitialized(object.Properties)
         }
@@ -138,14 +143,14 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
             stack_var char response[NAV_MAX_BUFFER]
             stack_var integer x
 
-            response = GetObjectFullMessage(args.Data)
+            response = NAVInterModuleApiGetObjectFullMessage(args.Data)
 
-            for (x = 1; x <= length_array(object.Properties.Tag); x++) {
-                if (!NAVContains(response, object.Properties.Tag[x])) {
+            for (x = 1; x <= length_array(object.Properties.Api.Tag); x++) {
+                if (!NAVContains(response, object.Properties.Api.Tag[x])) {
                     continue
                 }
 
-                GetObjectState(response, object.Properties.Tag[x])
+                GetObjectState(response, object.Properties.Api.Tag[x])
             }
         }
     }
@@ -154,9 +159,9 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
 
 
 define_function GetInitialized(_DspObject object) {
-    SendObjectMessage(vdvCommObject,
-                                BuildObjectMessage(OBJECT_QUERY_MESSAGE_HEADER,
-                                                    object.Id,
+    NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                                NAVInterModuleApiBuildObjectMessage(OBJECT_QUERY_MESSAGE_HEADER,
+                                                    object.Api.Id,
                                                     BuildPayload(object, '')))
 }
 
@@ -171,18 +176,18 @@ define_function GetObjectState(char response[], char tag[]) {
         object.State.Actual = atoi(response)
     }
 
-    if (object.Properties.IsInitialized) {
+    if (object.Properties.Api.IsInitialized) {
         return
     }
 
-    SendObjectMessage(vdvCommObject,
-                        BuildObjectMessage(OBJECT_INIT_DONE_MESSAGE_HEADER,
-                                            object.Properties.Id,
+    NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                        NAVInterModuleApiBuildObjectMessage(OBJECT_INIT_DONE_MESSAGE_HEADER,
+                                            object.Properties.Api.Id,
                                             ''))
 
     NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                "'mExtronDMPState => Object Initialization Complete: ID-', itoa(object.Properties.Id)")
-    object.Properties.IsInitialized = true
+                "'mExtronDMPState => Object Initialization Complete: ID-', itoa(object.Properties.Api.Id)")
+    object.Properties.Api.IsInitialized = true
 }
 
 
@@ -210,9 +215,9 @@ define_function NAVModulePropertyEventCallback(_NAVModulePropertyEvent event) {
 
 
 define_function SetObjectState(_DspState object, integer value) {
-    SendObjectMessage(vdvCommObject,
-                        BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
-                                            object.Properties.Id,
+    NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                        NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                            object.Properties.Api.Id,
                                             BuildPayload(object.Properties, itoa(value))))
 }
 
@@ -261,14 +266,14 @@ data_event[vdvObject] {
         NAVParseSnapiMessage(data.text, message)
 
         switch (message.Header) {
-            case 'REGISTER': {
-                object.Properties.Id = GetObjectId(message.Parameter[1])
+            case OBJECT_REGISTRATION_MESSAGE_HEADER: {
+                // object.Properties.Id = GetObjectId(message.Parameter[1])
 
                 registerReady = true
 
                 Register(object.Properties)
             }
-            case 'INIT': {
+            case OBJECT_INIT_MESSAGE_HEADER: {
                 GetInitialized(object.Properties)
             }
             case 'MUTE': {

@@ -13,6 +13,7 @@ MODULE_NAME='mExtronDMPComm'	(
 #include 'NAVFoundation.ModuleBase.axi'
 #include 'NAVFoundation.SocketUtils.axi'
 #include 'NAVFoundation.DevicePriorityQueue.axi'
+#include 'NAVFoundation.InterModuleApi.axi'
 #include 'LibExtronDMP.axi'
 
 /*
@@ -124,7 +125,7 @@ define_function SendString(char payload[]) {
 define_function NAVDevicePriorityQueueSendNextItemEventCallback(char item[]) {
     stack_var char payload[NAV_MAX_BUFFER]
 
-    payload = GetObjectMessage(item)
+    payload = NAVInterModuleApiGetObjectMessage(item)
 
     SendString(payload)
 }
@@ -142,8 +143,10 @@ define_function InitializeObjects() {
         return
     }
 
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => Initializing objects'")
+
     for (x = 1; x <= length_array(vdvCommObjects); x++) {
-        if (object[x].IsRegistered && !object[x].IsInitialized) {
+        if (object[x].Api.IsRegistered && !object[x].Api.IsInitialized) {
             initializing = true
             SendObjectInitRequest(x)
             initializingObjectID = x
@@ -179,26 +182,26 @@ define_function ReInitializeObjects() {
     initializingObjectID = 1
 
     for (x = 1; x <= length_array(object); x++) {
-        object[x].IsInitialized = false
+        object[x].Api.IsInitialized = false
     }
 }
 
 
 define_function SendObjectRegistrationRequest(integer id) {
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'EXTRON_DMP_SENDING_REGISTRATION_MSG<', itoa(id), '>'")
-    send_string vdvCommObjects[id], "'REGISTER<', itoa(id), '>'"
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => Requesting registration from Object ID: ', itoa(id)")
+    send_string vdvCommObjects[id], "NAVInterModuleApiGetRegisterCommand(id)"
 }
 
 
 define_function SendObjectResponse(integer id, char data[]) {
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'EXTRON_DMP_SENDING_RESPONSE_MSG<', data, '|', itoa(id), '>'")
-    send_string vdvCommObjects[id], "BuildObjectResponseMessage(data)"
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => Sending message to Object ID: ', itoa(id), ' :: ', data")
+    send_string vdvCommObjects[id], "NAVInterModuleApiBuildObjectResponseMessage(data)"
 }
 
 
 define_function SendObjectInitRequest(integer id) {
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'EXTRON_DMP_SENDING_INIT_MSG<', itoa(id), '>'")
-    send_string vdvCommObjects[id], "'INIT<', itoa(id), '>'"
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => Sending initialization request to Object ID: ', itoa(id)")
+    send_string vdvCommObjects[id], "NAVInterModuleApiGetInitCommand(id)"
 }
 
 
@@ -214,6 +217,9 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
     select {
         active (NAVContains(args.Data, HEARTBEAT_RESPONSE_HEADER)): {
             module.Device.IsCommunicating = true
+
+            NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => Received heartbeat response from device'")
+
             InitializeObjects()
         }
         active (true): {
@@ -221,11 +227,13 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
             stack_var integer z
 
             for (x = 1; x <= length_array(vdvCommObjects); x++) {
-                for (z = 1; z <= length_array(object[x].Tag); z++) {
-                    if (!NAVContains(args.Data, object[x].Tag[z])) {
+                for (z = 1; z <= length_array(object[x].Api.Tag); z++) {
+                    if (!NAVContains(args.Data, object[x].Api.Tag[z])) {
                         continue
                     }
 
+                    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                                "'mExtronDMPComm => Found tag ', object[x].Api.Tag[z], ' in response from device: ', args.Data")
                     SendObjectResponse(x, args.Data)
 
                     break
@@ -270,8 +278,10 @@ define_function SendHeartbeat() {
         return
     }
 
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => Enqueuing heartbeat command to device'")
+
     NAVDevicePriorityQueueEnqueue(priorityQueue,
-                                    "'POLL_MSG<HEARTBEAT|', HEARTBEAT_COMMAND, '>'",
+                                    NAVInterModuleApiGetPollMessageCommand("'HEARTBEAT|', NAV_ESC, '3CV', NAV_CR"),
                                     false)
 }
 
@@ -295,25 +305,62 @@ define_function NAVModulePropertyEventCallback(_NAVModulePropertyEvent event) {
 define_function ObjectRegister(integer index, tdata data) {
     stack_var integer id
     stack_var char tagList[NAV_MAX_BUFFER]
+    stack_var integer count
+    stack_var integer total
 
-    id = GetObjectId(data.text)
+    id = NAVInterModuleApiGetObjectId(data.text)
 
-    if (!NAVContains(data.text, '|')) {
-        object[id].IsRegistered = true
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => New object registration received from Object ID: ', itoa(id)")
+
+    if (NAVContains(data.text, '|')) {
+        tagList = NAVInterModuleApiGetObjectMessage(data.text)
+        NAVSplitString(tagList, ',', object[id].Api.Tag)
+        set_length_array(object[id].Api.Tag, GetStringArrayLength(object[id].Api.Tag))
+
+        NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => Object ID: ', itoa(id), ' has ', itoa(length_array(object[id].Api.Tag)), ' tags'")
+
+        {
+            stack_var integer x
+
+            for (x = 1; x <= length_array(object[id].Api.Tag); x++) {
+                NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => Object ID: ', itoa(id), ' Tag ', itoa(x), ': ', object[id].Api.Tag[x]")
+            }
+        }
+    }
+
+    object[id].Api.IsRegistered = true
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => Object ID: ', itoa(id), ' is now registered'")
+
+    total = length_array(vdvCommObjects)
+    count = GetObjectRegistrationCount(total)
+    // #warn 'This may not work as expected.'
+    // count = NAVInterModuleApiGetObjectRegistrationCount(object.Api, total)
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => ', itoa(count), ' out of ', itoa(total), ' objects are now registered'")
+
+    if (count < total) {
+        NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => Waiting for more objects to register'")
         return
     }
 
-    tagList = GetObjectMessage(data.text)
-    NAVSplitString(tagList, ',', object[id].Tag)
-    set_length_array(object[id].Tag, GetStringArrayLength(object[id].Tag))
-
-    object[id].IsRegistered = true
-
-    if (index < length_array(vdvCommObjects)) {
-        return
-    }
-
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => All objects are now registered'")
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => Object initialization will start after the next successful hearteat'")
     ready = true
+}
+
+
+define_function integer GetObjectRegistrationCount(integer maxCount) {
+    stack_var integer x
+    stack_var integer count
+
+    count = 0
+
+    for (x = 1; x <= maxCount; x++) {
+        if (object[x].Api.IsRegistered) {
+            count++
+        }
+    }
+
+    return count
 }
 
 
@@ -322,8 +369,10 @@ define_function ObjectInitDone(integer index, tdata data) {
 
     initializing = false
 
-    id = GetObjectId(data.text)
-    object[id].IsInitialized = true
+    id = NAVInterModuleApiGetObjectId(data.text)
+    object[id].Api.IsInitialized = true
+
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => Object ID: ', itoa(id), ' is now initialized'")
 
     InitializeObjects()
 
@@ -332,12 +381,12 @@ define_function ObjectInitDone(integer index, tdata data) {
     }
 
     // We are done!
-    send_string vdvObject, "'INIT_DONE'"
+    send_string vdvObject, "OBJECT_INIT_DONE_MESSAGE_HEADER"
 }
 
 
 define_function ObjectResponseOk(tdata data) {
-    if (GetObjectFullMessage(data.text) != GetObjectFullMessage(priorityQueue.LastMessage)) {
+    if (NAVInterModuleApiGetObjectFullMessage(data.text) != NAVInterModuleApiGetObjectFullMessage(priorityQueue.LastMessage)) {
         return
     }
 
@@ -418,7 +467,7 @@ data_event[vdvObject] {
         NAVParseSnapiMessage(data.text, message)
 
         switch (message.Header) {
-            case 'INIT': {
+            case OBJECT_INIT_MESSAGE_HEADER: {
                 stack_var integer x
 
                 for (x = 1; x <= length_array(vdvCommObjects); x++) {
@@ -447,19 +496,19 @@ data_event[vdvCommObjects] {
         index = get_last(vdvCommObjects)
 
         switch (message.Header) {
-            case 'COMMAND_MSG': {
-                NAVDevicePriorityQueueEnqueue(priorityQueue, "message.Header, data.text", true)
+            case OBJECT_COMMAND_MESSAGE_HEADER: {
+                NAVDevicePriorityQueueEnqueue(priorityQueue, "data.text", true)
             }
-            case 'POLL_MSG': {
-                NAVDevicePriorityQueueEnqueue(priorityQueue, "message.Header, data.text", false)
+            case OBJECT_QUERY_MESSAGE_HEADER: {
+                NAVDevicePriorityQueueEnqueue(priorityQueue, "data.text", false)
             }
-            case 'RESPONSE_OK': {
+            case OBJECT_RESPONSE_OK_MESSAGE_HEADER: {
                 ObjectResponseOk(data)
             }
-            case 'INIT_DONE': {
+            case OBJECT_INIT_DONE_MESSAGE_HEADER: {
                 ObjectInitDone(index, data)
             }
-            case 'REGISTER': {
+            case OBJECT_REGISTRATION_MESSAGE_HEADER: {
                 ObjectRegister(index, data)
             }
         }

@@ -38,11 +38,10 @@ SOFTWARE.
 #IF_NOT_DEFINED __LIB_EXTRONDMP__
 #DEFINE __LIB_EXTRONDMP__ 'LibExtronDMP'
 
+#include 'NAVFoundation.InterModuleApi.axi'
+
 
 DEFINE_CONSTANT
-
-constant integer MAX_OBJECTS	= 100
-constant integer MAX_OBJECT_TAGS	= 10
 
 constant integer MAX_OBJECT_ATTRIBUTE_VALUES = 10
 
@@ -58,13 +57,6 @@ constant char ATTRIBUTE_RESPONSE_HEADER_GROUP_SOFT_LIMITS[] = "ATTRIBUTE_RESPONS
 constant sinteger DSP_LEVEL_MAX_LEVEL = 2168
 constant sinteger DSP_LEVEL_MIN_LEVEL = 1048
 
-constant char OBJECT_COMMAND_MESSAGE_HEADER[] = 'COMMAND_MSG'
-constant char OBJECT_RESPONSE_MESSAGE_HEADER[] = 'RESPONSE_MSG'
-constant char OBJECT_QUERY_MESSAGE_HEADER[] = 'POLL_MSG'
-constant char OBJECT_INIT_MESSAGE_HEADER[] = 'INIT'
-constant char OBJECT_INIT_DONE_MESSAGE_HEADER[] = 'INIT_DONE'
-constant char OBJECT_REGISTRATION_MESSAGE_HEADER[] = 'REGISTER'
-
 
 DEFINE_TYPE
 
@@ -74,11 +66,8 @@ struct _DspAttribute {
 }
 
 struct _DspObject {
-    integer Id
-    integer IsInitialized
-    integer IsRegistered
+    _ModuleObject Api
     _DspAttribute Attribute
-    char Tag[MAX_OBJECT_TAGS][NAV_MAX_CHARS]
 }
 
 
@@ -118,80 +107,47 @@ define_function ObjectTagInit(_DspObject object) {
     switch (upper_string(object.Attribute.Id)) {
         case ATTRIBUTE_ID_GAIN:
         case ATTRIBUTE_ID_MUTE: {
-            object.Tag[1] = "ATTRIBUTE_RESPONSE_HEADER, object.Attribute.Id, format('%01d', atoi(object.Attribute.Value[1])), '*'"
-            object.Tag[2] = "ATTRIBUTE_RESPONSE_HEADER, object.Attribute.Id, format('%02d', atoi(object.Attribute.Value[1])), '*'"
+            if (length_array(object.Attribute.Value[1]) == 1) {
+                // For single digit values, we need to set two tags
+                // One with the value as is and the other with a leading zero
+                // This is because certain firmware versions require the leading zero
+                object.Api.Tag[1] = "ATTRIBUTE_RESPONSE_HEADER, object.Attribute.Id, format('%01d', atoi(object.Attribute.Value[1])), '*'"
+                object.Api.Tag[2] = "ATTRIBUTE_RESPONSE_HEADER, object.Attribute.Id, format('%02d', atoi(object.Attribute.Value[1])), '*'"
+            }
+            else {
+                object.Api.Tag[1] = "ATTRIBUTE_RESPONSE_HEADER, object.Attribute.Id, format('%01d', atoi(object.Attribute.Value[1])), '*'"
+            }
         }
         case ATTRIBUTE_ID_GROUP: {
-            object.Tag[1] = "ATTRIBUTE_RESPONSE_HEADER_GROUP, object.Attribute.Id, format('%01d', atoi(object.Attribute.Value[1])), '*'"
-            object.Tag[2] = "ATTRIBUTE_RESPONSE_HEADER_GROUP, object.Attribute.Id, format('%02d', atoi(object.Attribute.Value[1])), '*'"
-            object.Tag[3] = "ATTRIBUTE_RESPONSE_HEADER_GROUP_SOFT_LIMITS, format('%01d', atoi(object.Attribute.Value[1])), '*'"
-            object.Tag[4] = "ATTRIBUTE_RESPONSE_HEADER_GROUP_SOFT_LIMITS, format('%02d', atoi(object.Attribute.Value[1])), '*'"
+            if (length_array(object.Attribute.Value[1]) == 1) {
+                // For single digit values, we need to set two tags
+                // One with the value as is and the other with a leading zero
+                // This is because certain firmware versions require the leading zero
+                object.Api.Tag[1] = "ATTRIBUTE_RESPONSE_HEADER_GROUP, object.Attribute.Id, format('%01d', atoi(object.Attribute.Value[1])), '*'"
+                object.Api.Tag[2] = "ATTRIBUTE_RESPONSE_HEADER_GROUP, object.Attribute.Id, format('%02d', atoi(object.Attribute.Value[1])), '*'"
+                object.Api.Tag[3] = "ATTRIBUTE_RESPONSE_HEADER_GROUP_SOFT_LIMITS, format('%01d', atoi(object.Attribute.Value[1])), '*'"
+                object.Api.Tag[4] = "ATTRIBUTE_RESPONSE_HEADER_GROUP_SOFT_LIMITS, format('%02d', atoi(object.Attribute.Value[1])), '*'"
+            }
+            else {
+                object.Api.Tag[1] = "ATTRIBUTE_RESPONSE_HEADER_GROUP, object.Attribute.Id, format('%01d', atoi(object.Attribute.Value[1])), '*'"
+                object.Api.Tag[2] = "ATTRIBUTE_RESPONSE_HEADER_GROUP_SOFT_LIMITS, format('%01d', atoi(object.Attribute.Value[1])), '*'"
+            }
         }
     }
 
-    set_length_array(object.Tag, GetStringArrayLength(object.Tag))
+    set_length_array(object.Api.Tag, GetStringArrayLength(object.Api.Tag))
 }
 
 
 define_function DspLevelInit(_DspLevel object) {
-    object.Properties.IsInitialized = false
-    object.Properties.IsRegistered = false
+    NAVInterModuleApiInit(object.Properties.Api)
     object.MaxLevel = DSP_LEVEL_MAX_LEVEL
     object.MinLevel = DSP_LEVEL_MIN_LEVEL
 }
 
 
 define_function DspStateInit(_DspState object) {
-    object.Properties.IsInitialized = false
-    object.Properties.IsRegistered = false
-}
-
-
-define_function integer GetObjectId(char buffer[]) {
-    if (!NAVContains(buffer, '|')) {
-        return atoi(NAVGetStringBetween(buffer, '<', '>'))
-    }
-
-    return atoi(NAVGetStringBetween(buffer, '<', '|'))
-}
-
-
-define_function char[NAV_MAX_BUFFER] GetObjectMessage(char buffer[]) {
-    return NAVGetStringBetween(buffer, '|', '>')
-}
-
-
-define_function char[NAV_MAX_BUFFER] GetObjectFullMessage(char buffer[]) {
-    return NAVGetStringBetween(buffer, '<', '>')
-}
-
-
-define_function char[NAV_MAX_BUFFER] BuildObjectMessage(char header[], integer id, char payload[]) {
-    if (!length_array(payload)) {
-        return "header, '-<', itoa(id), '>'"
-    }
-
-    return "header, '-<', itoa(id), '|', payload, '>'"
-}
-
-
-define_function char[NAV_MAX_BUFFER] BuildObjectResponseMessage(char data[]) {
-    return "OBJECT_RESPONSE_MESSAGE_HEADER, '<', data, '>'"
-}
-
-
-define_function SendObjectMessage(dev device, char payload[]) {
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_TO,
-                                            device,
-                                            payload))
-
-    NAVCommand(device, "payload")
-}
-
-
-define_function char[NAV_MAX_BUFFER] GetObjectTagList(_DspObject object) {
-    return NAVArrayJoinString(object.Tag, ',')
+    NAVInterModuleApiInit(object.Properties.Api)
 }
 
 

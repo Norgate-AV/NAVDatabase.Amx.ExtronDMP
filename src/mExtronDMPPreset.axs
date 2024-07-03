@@ -6,6 +6,7 @@ MODULE_NAME='mExtronDMPPreset'	(
 (***********************************************************)
 #DEFINE USING_NAV_STRING_GATHER_CALLBACK
 #include 'NAVFoundation.ModuleBase.axi'
+#include 'NAVFoundation.InterModuleApi.axi'
 #include 'LibExtronDMP.axi'
 
 /*
@@ -82,18 +83,18 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
 
 define_function Register(_DspObject object) {
-    if (!registerRequested || !registerReady || !object.Id) {
+    if (!registerRequested || !registerReady || !object.Api.Id) {
         return
     }
 
-    SendObjectMessage(vdvCommObject,
-                        BuildObjectMessage(OBJECT_REGISTRATION_MESSAGE_HEADER,
-                                            object.Id,
+    NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                        NAVInterModuleApiBuildObjectMessage(OBJECT_REGISTRATION_MESSAGE_HEADER,
+                                            object.Api.Id,
                                             ''))
 
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPPreset => Object Registering: ID-', itoa(object.Id)")
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPPreset => Object Registering: ID-', itoa(object.Api.Id)")
 
-    object.IsRegistered = true
+    object.Api.IsRegistered = true
 }
 
 
@@ -106,32 +107,36 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
                                             vdvCommObject,
                                             args.Data))
 
-    if (NAVContains(module.RxBuffer.Data, args.Data)) {
-        module.RxBuffer.Data = "''"
-    }
+    // if (NAVContains(module.RxBuffer.Data, args.Data)) {
+    //     module.RxBuffer.Data = "''"
+    // }
 
-    id = GetObjectId(args.Data)
-    if (id != object.Id) {
-        return
-    }
+    id = NAVInterModuleApiGetObjectId(args.Data)
+    // if (id != object.Id) {
+    //     return
+    // }
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                "'mExtronDMPPreset => Object ID-', itoa(id), ' Data-', args.Data");
 
     select {
         active (NAVStartsWith(args.Data, OBJECT_REGISTRATION_MESSAGE_HEADER)): {
+            object.Api.Id = id
+
             registerRequested = true
             NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                        "'mExtronDMPPreset => Object Registration Requested: ID-', itoa(object.Id)")
+                        "'mExtronDMPPreset => Object Registration Requested: ID-', itoa(object.Api.Id)")
 
             Register(object)
         }
         active (NAVStartsWith(args.Data, OBJECT_INIT_MESSAGE_HEADER)): {
             NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                        "'mExtronDMPState => Object Initialization Requested: ID-', itoa(object.Id)")
+                        "'mExtronDMPState => Object Initialization Requested: ID-', itoa(object.Api.Id)")
 
             GetInitialized(object)
         }
         active (NAVStartsWith(args.Data, OBJECT_RESPONSE_MESSAGE_HEADER)): {
             stack_var char response[NAV_MAX_BUFFER]
-            response = GetObjectFullMessage(args.Data)
+            response = NAVInterModuleApiGetObjectFullMessage(args.Data)
         }
     }
 }
@@ -139,14 +144,14 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
 
 
 define_function GetInitialized(_DspObject object) {
-    SendObjectMessage(vdvCommObject,
-                        BuildObjectMessage(OBJECT_INIT_DONE_MESSAGE_HEADER,
-                                            object.Id,
+    NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                        NAVInterModuleApiBuildObjectMessage(OBJECT_INIT_DONE_MESSAGE_HEADER,
+                                            object.Api.Id,
                                             ''))
 
     NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                "'mExtronDMPPreset => Object Initialization Complete: ID-', itoa(object.Id)")
-    object.IsInitialized = true
+                "'mExtronDMPPreset => Object Initialization Complete: ID-', itoa(object.Api.Id)")
+    object.Api.IsInitialized = true
 }
 
 
@@ -185,7 +190,7 @@ data_event[vdvObject] {
 
         switch (message.Header) {
             case 'PRESET': {
-                BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER, object.Id, "message.Parameter[1], '.'")
+                NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER, object.Api.Id, "message.Parameter[1], '.'")
             }
         }
     }
@@ -194,7 +199,7 @@ data_event[vdvObject] {
 
 channel_event[vdvObject, 0] {
     on: {
-        BuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER, object.Id, "itoa(channel.channel), '.'")
+        NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER, object.Api.Id, "itoa(channel.channel), '.'")
     }
 }
 
