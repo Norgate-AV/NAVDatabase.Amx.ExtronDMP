@@ -256,7 +256,7 @@ define_function Process(_NAVRxBuffer buffer) {
         return
     }
 
-    NAVStringGather(buffer, DEVICE_DELIMITER)
+    NAVStringGather(buffer, "NAV_CR, NAV_LF")
 }
 
 
