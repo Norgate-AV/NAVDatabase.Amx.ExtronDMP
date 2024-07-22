@@ -190,7 +190,10 @@ data_event[vdvObject] {
 
         switch (message.Header) {
             case 'PRESET': {
-                NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER, object.Api.Id, "message.Parameter[1], '.'")
+                NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                                NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                                    object.Api.Id,
+                                                                    "message.Parameter[1], '.'"))
             }
         }
     }
@@ -199,7 +202,10 @@ data_event[vdvObject] {
 
 channel_event[vdvObject, 0] {
     on: {
-        NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER, object.Api.Id, "itoa(channel.channel), '.'")
+        NAVInterModuleApiSendObjectMessage(vdvCommObject,
+                                NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
+                                                                    object.Api.Id,
+                                                                    "itoa(channel.channel), '.'"))
     }
 }
 
