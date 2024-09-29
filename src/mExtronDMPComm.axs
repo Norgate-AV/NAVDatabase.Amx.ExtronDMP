@@ -352,7 +352,7 @@ define_function ObjectRegister(integer index, tdata data) {
     }
 
     NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => All objects are now registered'")
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => Object initialization will start after the next successful hearteat'")
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => Object initialization will start after the next successful heartbeat'")
     ready = true
 }
 
