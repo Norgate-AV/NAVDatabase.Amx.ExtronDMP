@@ -216,6 +216,21 @@ data_event[vdvLevelObject] {
                     }
                 }
             }
+            case 'VOLUME': {
+                switch (message.Parameter[1]) {
+                    case 'ABS': {
+                        stack_var char level[4]
+
+                        level = NAVStripRight(message.Parameter[2], 1)
+
+                        if (!length_array(level)) {
+                            level = '0'
+                        }
+
+                        NAVTextArray(dvTP, 11, '0', "level, 'dB'")
+                    }
+                }
+            }
         }
     }
 }

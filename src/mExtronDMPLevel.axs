@@ -210,12 +210,22 @@ define_function GetObjectLevel(char response[], char tag[]) {
 
 
 define_function UpdateObjectLevel(_DspLevel object) {
-    send_level vdvObject,
-                VOL_LVL,
-                NAVScaleValue((object.Level.Actual - object.MinLevel),
+    stack_var sinteger level
+
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                "'mExtronDMPLevel => Object Soft Limits: ID-', itoa(object.Properties.Api.Id), ' Min-', itoa(object.MinLevel), ' Max-', itoa(object.MaxLevel)")
+
+    level = NAVScaleValue((object.Level.Actual - object.MinLevel),
                                 (object.MaxLevel - object.MinLevel),
                                 255,
                                 0)
+
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                "'mExtronDMPLevel => Object Level: ID-', itoa(object.Properties.Api.Id), ' Level-', itoa(level)")
+
+    send_level vdvObject, VOL_LVL, level
+
+    NAVCommand(vdvObject, "'VOLUME-ABS,', itoa(object.Level.Actual)")
 }
 
 
