@@ -71,7 +71,7 @@ DEFINE_VARIABLE
 
 volatile integer locked
 
-volatile integer levelTouched
+volatile integer levelTouched = false
 
 volatile sinteger currentLevel
 

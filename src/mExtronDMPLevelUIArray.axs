@@ -69,11 +69,9 @@ DEFINE_VARIABLE
 
 volatile integer locked
 
-volatile integer levelTouched
-volatile sinteger siRequestedLevel = -1
+volatile integer levelTouched = false
 
 volatile sinteger currentLevel
-volatile sinteger oldLevel
 
 
 (***********************************************************)
