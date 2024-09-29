@@ -235,6 +235,9 @@ define_function GetObjectLimits(char response[], char tag[]) {
     object.MaxLevel = atoi(NAVStripCharsFromRight(remove_string(response, '*', 1), 1))
     object.MinLevel = atoi(response)
 
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                "'mExtronDMPLevel => Object Soft Limits: ID-', itoa(object.Properties.Api.Id), ' Min-', itoa(object.MinLevel), ' Max-', itoa(object.MaxLevel)")
+
     UpdateObjectLevel(object)
 }
 
