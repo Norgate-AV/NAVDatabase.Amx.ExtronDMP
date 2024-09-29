@@ -93,16 +93,20 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
 
 define_function Register(_DspObject object) {
+    stack_var char message[NAV_MAX_BUFFER]
     if (!registerRequested || !registerReady || !object.Api.Id) {
         return
     }
 
     ObjectTagInit(object)
 
-    NAVInterModuleApiSendObjectMessage(vdvCommObject,
-                        NAVInterModuleApiBuildObjectMessage(OBJECT_REGISTRATION_MESSAGE_HEADER,
-                                            object.Api.Id,
-                                            NAVInterModuleApiGetObjectTagList(object.Api)))
+    message = NAVInterModuleApiBuildObjectMessage(OBJECT_REGISTRATION_MESSAGE_HEADER,
+                                    object.Api.Id,
+                                    NAVInterModuleApiGetObjectTagList(object.Api))
+
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPLevel => ID-', itoa(object.Api.Id), ' Data-', message")
+
+    NAVInterModuleApiSendObjectMessage(vdvCommObject, message)
 
     NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPLevel => Object Registering: ID-', itoa(object.Api.Id)")
 
