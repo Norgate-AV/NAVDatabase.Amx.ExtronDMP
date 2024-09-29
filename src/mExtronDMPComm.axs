@@ -465,6 +465,9 @@ data_event[dvPort] {
 
 
 data_event[vdvObject] {
+    online: {
+        set_length_array(object, length_array(vdvCommObjects))
+    }
     command: {
         stack_var _NAVSnapiMessage message
 
