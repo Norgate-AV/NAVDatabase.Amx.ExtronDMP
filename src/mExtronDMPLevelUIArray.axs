@@ -93,20 +93,13 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
 
 define_function Update(dev device[], sinteger level) {
-    stack_var integer x
-    stack_var integer length
-
     if (levelTouched) {
         return
     }
 
     currentLevel = level
 
-    length = length_array(device)
-
-    for (x = 1; x <= length; x++) {
-        send_level device[x], VOL_LVL, level
-    }
+    NAVSendLevelArray(device, VOL_LVL, type_cast(level))
 
     NAVTextArray(device, ADDRESS_LEVEL_PERCENTAGE, '0', "itoa(NAVScaleValue(type_cast(level), 255, 100, 0)), '%'")
 }
