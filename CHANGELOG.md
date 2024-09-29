@@ -1,5 +1,48 @@
 # Changelog
 
+## [1.3.0](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.2.3...v1.3.0) (2024-09-29)
+
+### 🌟 Features
+
+-   add better logging to registrations ([b33fffc](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/b33fffce64efe8060d68e4ab080b8495d86e15a2))
+-   add debug log for soft limits in level ([34dc328](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/34dc3288ad839b48643a48feab23cea4a68621c0))
+-   add socket connection reset on change of ip address ([e5d7fb6](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/e5d7fb6ee732f8ee8f500b6dd2c4cf8a52ae8413))
+-   add support for receiving string levels update to show dB levels ([483efde](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/483efde9742c975c0d8dd92c679774b669247d0a))
+-   implement inter-module-api ([c2ceba0](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/c2ceba02cb8db092b57cdd2ade8e0b9f8aa15708))
+
+### 🐛 Bug Fixes
+
+-   break out of double loop correctly ([22b27b5](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/22b27b5e9a1ec414a169ce074e1ab80aa092f8b4))
+-   ensure device ip address and password are free from trailing ([a0f9db4](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/a0f9db42e1de1e1234fca0307c50f718fba0a9e5))
+-   reverse state for crosspoint mutes ([ceb2b61](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/ceb2b61c9ebc2464c0a9d12af42e77de76e48e86))
+-   use constant string literal for software limits header ([289277f](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/289277ff73b2b5ca54d08c5b6c840efaa17ea1ea))
+-   **preset:** use function that actually send the data ([a8c57dc](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/a8c57dcdf4e4dd5f60d02d71689bcc48dc74437e))
+-   use string literal for delimiter ([ecffcaa](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/ecffcaaecc132d33d28b505ea3ea6ed4f1dba634))
+
+### 📖 Documentation
+
+-   update readme in installation and usage ([5e1a646](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/5e1a6464375c96416013ffcc1f4968574cb6783f))
+
+### 💅 Style
+
+-   remove extra line break ([e4a93d8](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/e4a93d8987dbd78f5186dcbe09e4b3bdf95928c7))
+
+### ✨ Refactor
+
+-   ensure ready and initializing variables are initialized to ([64fd832](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/64fd8326ddb55f8f01bf210670c3777f9805e828))
+-   fix spelling error in debug log ([5235639](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/52356396299c28d044de53cfa2a3e22d1c074c50))
+-   remove redundant code ([a2a6890](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/a2a68907c16243175222feebd8011cb7b572dcfd))
+-   use NAVSendLevelArray function ([85a0fa7](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/85a0fa78ca8d99185a8975d95e7ce400868d32da))
+
+### 🚀 Performance
+
+-   set size of object array once known ([9602e71](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/9602e71213c76bd4e97830c75385abfb46a33543))
+
+### 🤖 CI
+
+-   update releaserc.json ([a6a5d72](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/a6a5d72f01a4bbae91b638982378d4ce498bae2e))
+-   update semantic release step in workflow ([1b47806](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/1b478065599465cb3c6c289bce72af15e01a16f3))
+
 ## [1.2.3](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.2.2...v1.2.3) (2024-03-09)
 
 ### ✨ Refactor
