@@ -174,12 +174,7 @@ define_function GetInitialized(_DspObject object) {
 define_function GetObjectState(char response[], char tag[]) {
     remove_string(response, "tag", 1)
 
-    if (ObjectIsCrosspointState(object.Properties)) {
-        object.State.Actual = !atoi(response)
-    }
-    else {
-        object.State.Actual = atoi(response)
-    }
+    object.State.Actual = atoi(response)
 
     if (object.Properties.Api.IsInitialized) {
         return
