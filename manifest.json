@@ -10,5 +10,8 @@
     },
     "bugs": {
         "url": "https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/issues"
+    },
+    "dependencies": {
+        "NAVFoundation.Amx": "latest"
     }
 }
