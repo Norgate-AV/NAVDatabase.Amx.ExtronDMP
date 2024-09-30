@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.3](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.3.2...v1.3.3) (2024-09-30)
+
+### 🐛 Bug Fixes
+
+-   fixbug with archiving ([22904cf](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/22904cf4e0c4b3153d3c22ec3f21eed3d83b6e6a))
+
 ## [1.3.2](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.3.1...v1.3.2) (2024-09-30)
 
 ### 🐛 Bug Fixes
