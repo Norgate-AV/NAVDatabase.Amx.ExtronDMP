@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.1](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.3.0...v1.3.1) (2024-09-30)
+
+### 🐛 Bug Fixes
+
+-   send strings out of module to prevent retriggering incoming ([1c4f132](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/1c4f1328eb3872e025ae38de6daf64b762e4d277))
+
 ## [1.3.0](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.2.3...v1.3.0) (2024-09-29)
 
 ### 🌟 Features
