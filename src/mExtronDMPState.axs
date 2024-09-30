@@ -97,11 +97,11 @@ define_function Register(_DspObject object) {
                                     object.Api.Id,
                                     NAVInterModuleApiGetObjectTagList(object.Api))
 
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPState => ID-', itoa(object.Api.Id), ' Data-', message")
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPState => ID: ', itoa(object.Api.Id), ' Data: ', message")
 
     NAVInterModuleApiSendObjectMessage(vdvCommObject, message)
 
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPState => Object Registering: ID-', itoa(object.Api.Id)")
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPState => Object Registering: ID: ', itoa(object.Api.Id)")
 
     object.Api.IsRegistered = true
 }
@@ -125,7 +125,7 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
     //     return
     // }
     NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                "'mExtronDMPState => Object ID-', itoa(id), ' Data-', args.Data");
+                "'mExtronDMPState => Object ID: ', itoa(id), ' Data: ', args.Data");
 
     select {
         active (NAVStartsWith(args.Data, OBJECT_REGISTRATION_MESSAGE_HEADER)): {
@@ -133,14 +133,14 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
 
             registerRequested = true
             NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                        "'mExtronDMPState => Object Registration Requested: ID-', itoa(object.Properties.Api.Id)")
+                        "'mExtronDMPState => Object Registration Requested: ID: ', itoa(object.Properties.Api.Id)")
 
             Register(object.Properties)
         }
         active (NAVStartsWith(args.Data, OBJECT_INIT_MESSAGE_HEADER)): {
             object.Properties.Api.IsInitialized = false
             NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                        "'mExtronDMPState => Object Initialization Requested: ID-', itoa(object.Properties.Api.Id)")
+                        "'mExtronDMPState => Object Initialization Requested: ID: ', itoa(object.Properties.Api.Id)")
 
             GetInitialized(object.Properties)
         }
@@ -186,7 +186,7 @@ define_function GetObjectState(char response[], char tag[]) {
                                             ''))
 
     NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                "'mExtronDMPState => Object Initialization Complete: ID-', itoa(object.Properties.Api.Id)")
+                "'mExtronDMPState => Object Initialization Complete: ID: ', itoa(object.Properties.Api.Id)")
     object.Properties.Api.IsInitialized = true
 }
 

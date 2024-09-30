@@ -104,11 +104,11 @@ define_function Register(_DspObject object) {
                                     object.Api.Id,
                                     NAVInterModuleApiGetObjectTagList(object.Api))
 
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPLevel => ID-', itoa(object.Api.Id), ' Data-', message")
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPLevel => ID: ', itoa(object.Api.Id), ' Data: ', message")
 
     NAVInterModuleApiSendObjectMessage(vdvCommObject, message)
 
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPLevel => Object Registering: ID-', itoa(object.Api.Id)")
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPLevel => Object Registering: ID: ', itoa(object.Api.Id)")
 
     object.Api.IsRegistered = true
 }
@@ -132,7 +132,7 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
     //     return
     // }
     NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                "'mExtronDMPLevel => Object ID-', itoa(id), ' Data-', args.Data");
+                "'mExtronDMPLevel => Object ID: ', itoa(id), ' Data: ', args.Data");
 
     select {
         active (NAVStartsWith(args.Data, OBJECT_REGISTRATION_MESSAGE_HEADER)): {
@@ -141,14 +141,14 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
 
             registerRequested = true
             NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                        "'mExtronDMPLevel => Object Registration Requested: ID-', itoa(object.Properties.Api.Id)")
+                        "'mExtronDMPLevel => Object Registration Requested: ID: ', itoa(object.Properties.Api.Id)")
 
             Register(object.Properties)
         }
         active (NAVStartsWith(args.Data, OBJECT_INIT_MESSAGE_HEADER)): {
             object.Properties.Api.IsInitialized = false
             NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                        "'mExtronDMPLevel => Object Initialization Requested: ID-', itoa(object.Properties.Api.Id)")
+                        "'mExtronDMPLevel => Object Initialization Requested: ID: ', itoa(object.Properties.Api.Id)")
 
             GetInitialized(object.Properties)
         }
@@ -208,7 +208,7 @@ define_function GetObjectLevel(char response[], char tag[]) {
                                             ''))
 
     NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                "'mExtronDMPLevel => Object Initialization Complete: ID-', itoa(object.Properties.Api.Id)")
+                "'mExtronDMPLevel => Object Initialization Complete: ID: ', itoa(object.Properties.Api.Id)")
     object.Properties.Api.IsInitialized = true
 }
 
@@ -217,7 +217,7 @@ define_function UpdateObjectLevel(_DspLevel object) {
     stack_var sinteger level
 
     NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                "'mExtronDMPLevel => Object Soft Limits: ID-', itoa(object.Properties.Api.Id), ' Min-', itoa(object.MinLevel), ' Max-', itoa(object.MaxLevel)")
+                "'mExtronDMPLevel => Object Soft Limits: ID: ', itoa(object.Properties.Api.Id), ' Min: ', itoa(object.MinLevel), ' Max: ', itoa(object.MaxLevel)")
 
     level = NAVScaleValue((object.Level.Actual - object.MinLevel),
                                 (object.MaxLevel - object.MinLevel),
@@ -225,7 +225,7 @@ define_function UpdateObjectLevel(_DspLevel object) {
                                 0)
 
     NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                "'mExtronDMPLevel => Object Level: ID-', itoa(object.Properties.Api.Id), ' Level-', itoa(level)")
+                "'mExtronDMPLevel => Object Level: ID: ', itoa(object.Properties.Api.Id), ' Level: ', itoa(level)")
 
     send_level vdvObject, VOL_LVL, level
     send_string vdvObject, "'VOLUME-ABS,', itoa(object.Level.Actual)"
@@ -239,7 +239,7 @@ define_function GetObjectLimits(char response[], char tag[]) {
     object.MinLevel = atoi(response)
 
     NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                "'mExtronDMPLevel => Object Soft Limits: ID-', itoa(object.Properties.Api.Id), ' Min-', itoa(object.MinLevel), ' Max-', itoa(object.MaxLevel)")
+                "'mExtronDMPLevel => Object Soft Limits: ID: ', itoa(object.Properties.Api.Id), ' Min: ', itoa(object.MinLevel), ' Max: ', itoa(object.MaxLevel)")
 
     UpdateObjectLevel(object)
 }

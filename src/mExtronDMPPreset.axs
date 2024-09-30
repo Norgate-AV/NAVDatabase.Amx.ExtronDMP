@@ -92,7 +92,7 @@ define_function Register(_DspObject object) {
                                             object.Api.Id,
                                             ''))
 
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPPreset => Object Registering: ID-', itoa(object.Api.Id)")
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPPreset => Object Registering: ID: ', itoa(object.Api.Id)")
 
     object.Api.IsRegistered = true
 }
@@ -116,7 +116,7 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
     //     return
     // }
     NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                "'mExtronDMPPreset => Object ID-', itoa(id), ' Data-', args.Data");
+                "'mExtronDMPPreset => Object ID: ', itoa(id), ' Data: ', args.Data");
 
     select {
         active (NAVStartsWith(args.Data, OBJECT_REGISTRATION_MESSAGE_HEADER)): {
@@ -124,13 +124,13 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
 
             registerRequested = true
             NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                        "'mExtronDMPPreset => Object Registration Requested: ID-', itoa(object.Api.Id)")
+                        "'mExtronDMPPreset => Object Registration Requested: ID: ', itoa(object.Api.Id)")
 
             Register(object)
         }
         active (NAVStartsWith(args.Data, OBJECT_INIT_MESSAGE_HEADER)): {
             NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                        "'mExtronDMPState => Object Initialization Requested: ID-', itoa(object.Api.Id)")
+                        "'mExtronDMPState => Object Initialization Requested: ID: ', itoa(object.Api.Id)")
 
             GetInitialized(object)
         }
@@ -150,7 +150,7 @@ define_function GetInitialized(_DspObject object) {
                                             ''))
 
     NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                "'mExtronDMPPreset => Object Initialization Complete: ID-', itoa(object.Api.Id)")
+                "'mExtronDMPPreset => Object Initialization Complete: ID: ', itoa(object.Api.Id)")
     object.Api.IsInitialized = true
 }
 
