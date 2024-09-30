@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.2](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.3.1...v1.3.2) (2024-09-30)
+
+### 🐛 Bug Fixes
+
+-   fix symlink and archiving bugs for scoop ([05c7514](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/05c7514fdbf6005c7d09f56e6e5227848aaa346a))
+
 ## [1.3.1](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.3.0...v1.3.1) (2024-09-30)
 
 ### 🐛 Bug Fixes
