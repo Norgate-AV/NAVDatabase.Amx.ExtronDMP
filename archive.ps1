@@ -60,7 +60,7 @@ try {
     $files = @()
 
     foreach ($file in $manifest.files) {
-        $files += Get-ChildItem -File $file -ErrorAction Stop | Where-Object { $_.FullName -notmatch "(\.\w+|node_modules|dist)" }
+        $files += Get-ChildItem -File $file -ErrorAction Stop | Where-Object { $_.FullName -notmatch "(.git|.history|node_modules|dist)" }
     }
 
     $files += "$Path/manifest.json"
