@@ -182,8 +182,13 @@ data_event[vdvLevelObject] {
     command: {
         stack_var _NAVSnapiMessage message
 
+        NAVParseSnapiMessage(data.text, message)
+    }
+    string: {
+        stack_var _NAVSnapiMessage message
+
         NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM,
+                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_STRING_FROM,
                                                 data.device,
                                                 data.text))
 
@@ -204,9 +209,6 @@ data_event[vdvLevelObject] {
                         NAVTextArray(dvTP, 11, '0', "level, 'dB'")
                     }
                 }
-            }
-            default: {
-
             }
         }
     }

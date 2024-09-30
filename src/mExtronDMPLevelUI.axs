@@ -181,8 +181,13 @@ data_event[vdvLevelObject] {
     command: {
         stack_var _NAVSnapiMessage message
 
+        NAVParseSnapiMessage(data.text, message)
+    }
+    string: {
+        stack_var _NAVSnapiMessage message
+
         NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM,
+                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_STRING_FROM,
                                                 data.device,
                                                 data.text))
 
@@ -192,7 +197,7 @@ data_event[vdvLevelObject] {
             case 'VOLUME': {
                 switch (message.Parameter[1]) {
                     case 'ABS': {
-                        stack_var char level[5]
+                        stack_var char level[4]
 
                         level = NAVStripRight(message.Parameter[2], 1)
 
@@ -203,9 +208,6 @@ data_event[vdvLevelObject] {
                         NAVText(dvTP, 11, '0', "level, 'dB'")
                     }
                 }
-            }
-            default: {
-
             }
         }
     }

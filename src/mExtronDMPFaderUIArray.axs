@@ -204,6 +204,19 @@ data_event[vdvLevelObject] {
                     }
                 }
             }
+        }
+    }
+    string: {
+        stack_var _NAVSnapiMessage message
+
+        NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_STRING_FROM,
+                                                data.device,
+                                                data.text))
+
+        NAVParseSnapiMessage(data.text, message)
+
+        switch (message.Header) {
             case 'VOLUME': {
                 switch (message.Parameter[1]) {
                     case 'ABS': {
@@ -230,11 +243,6 @@ data_event[vdvStateObject] {
     }
     command: {
         stack_var _NAVSnapiMessage message
-
-        NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM,
-                                                data.device,
-                                                data.text))
 
         NAVParseSnapiMessage(data.text, message)
 

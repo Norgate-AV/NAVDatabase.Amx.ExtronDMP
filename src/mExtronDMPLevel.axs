@@ -228,8 +228,7 @@ define_function UpdateObjectLevel(_DspLevel object) {
                 "'mExtronDMPLevel => Object Level: ID-', itoa(object.Properties.Api.Id), ' Level-', itoa(level)")
 
     send_level vdvObject, VOL_LVL, level
-
-    NAVCommand(vdvObject, "'VOLUME-ABS,', itoa(object.Level.Actual)")
+    send_string vdvObject, "'VOLUME-ABS,', itoa(object.Level.Actual)"
 }
 
 
