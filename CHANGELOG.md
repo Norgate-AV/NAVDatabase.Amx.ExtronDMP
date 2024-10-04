@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.0](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.3.3...v1.4.0) (2024-10-04)
+
+### 🌟 Features
+
+-   add logging of level updates and tp online/offline events ([728c871](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/728c8712aa86346fc84a9684246bf4e14a38144f))
+
+### 🐛 Bug Fixes
+
+-   add correct files to manifest ([996ec73](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/996ec73bd6575d8f30d0b375cf5d146c0dc3160e))
+
 ## [1.3.3](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.3.2...v1.3.3) (2024-09-30)
 
 ### 🐛 Bug Fixes
