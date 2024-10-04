@@ -98,6 +98,9 @@ define_function Update(dev device, sinteger level) {
     currentLevel = level
     send_level device, VOL_LVL, level
 
+    // Log
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'Level Update To [', NAVDeviceToString(device), ']: ', itoa(level)")
+
     NAVText(device, ADDRESS_LEVEL_PERCENTAGE, '0', "itoa(NAVScaleValue(type_cast(level), 255, 100, 0)), '%'")
 }
 
@@ -169,7 +172,12 @@ level_event[dvTP, VOL_LVL] {
 
 data_event[dvTP] {
     online: {
+        NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'Device [', NAVDeviceToString(data.device), ']: Online'")
+
         Update(dvTP, currentLevel)
+    }
+    offline: {
+        NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'Device [', NAVDeviceToString(data.device), ']: Offline'")
     }
 }
 

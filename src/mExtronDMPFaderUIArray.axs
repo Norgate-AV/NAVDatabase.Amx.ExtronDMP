@@ -105,6 +105,15 @@ define_function Update(dev device[], sinteger level, char label[]) {
 
     NAVSendLevelArray(device, VOL_LVL, type_cast(level))
 
+    // Log
+    {
+        stack_var integer x
+
+        for (x = 1; x <= length_array(device); x++) {
+            NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'Level Update To [', NAVDeviceToString(device[x]), ']: ', itoa(level)")
+        }
+    }
+
     NAVTextArray(device, ADDRESS_LEVEL_PERCENTAGE, '0', "itoa(NAVScaleValue(type_cast(level), 255, 100, 0)), '%'")
 
     NAVTextArray(dvTP, ADDRESS_LABEL, '0', label)
@@ -181,7 +190,12 @@ level_event[dvTP, VOL_LVL] {
 
 data_event[dvTP] {
     online: {
+        NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'Device [', NAVDeviceToString(data.device), ']: Online'")
+
         Update(dvTP, currentLevel, label)
+    }
+    offline: {
+        NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'Device [', NAVDeviceToString(data.device), ']: Offline'")
     }
 }
 
