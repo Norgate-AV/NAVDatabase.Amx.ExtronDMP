@@ -303,9 +303,9 @@ define_function NAVModulePropertyEventCallback(_NAVModulePropertyEvent event) {
 #END_IF
 
 
-define_function RampLevel() {
-    select {
-        active ([vdvObject, VOL_UP]): {
+define_function IncrementLevel(integer direction) {
+    switch (direction) {
+        case VOL_UP: {
             if (object.Properties.Attribute.Id == ATTRIBUTE_ID_GAIN) {
                 NAVInterModuleApiSendObjectMessage(vdvCommObject,
                                     NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
@@ -319,7 +319,7 @@ define_function RampLevel() {
                                                     object.Properties.Api.Id,
                                                     BuildPayload(object.Properties, '10+')))
         }
-        active ([vdvObject, VOL_DN]): {
+        case VOL_DN: {
             if (object.Properties.Attribute.Id == ATTRIBUTE_ID_GAIN) {
                 NAVInterModuleApiSendObjectMessage(vdvCommObject,
                                     NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
@@ -337,6 +337,18 @@ define_function RampLevel() {
 }
 
 
+define_function RampLevel() {
+    select {
+        active ([vdvObject, VOL_UP]): {
+            IncrementLevel(VOL_UP)
+        }
+        active ([vdvObject, VOL_DN]): {
+            IncrementLevel(VOL_DN)
+        }
+    }
+}
+
+
 define_function ObjectChannelEvent(integer channel) {
     switch (channel) {
         case VOL_UP:
@@ -344,6 +356,8 @@ define_function ObjectChannelEvent(integer channel) {
             if (!object.Properties.Api.IsInitialized) {
                 return
             }
+
+            IncrementLevel(channel)
 
             NAVTimelineStart(TL_LEVEL_RAMP, levelRamp, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
         }
