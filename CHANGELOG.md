@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.1](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.4.0...v1.4.1) (2024-10-11)
+
+### 🐛 Bug Fixes
+
+-   **level:** increment imediately instead of waiting for timeline ([745a11f](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/745a11f29846ab166fd153eb3c25da19e7de58db))
+
 ## [1.4.0](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.3.3...v1.4.0) (2024-10-04)
 
 ### 🌟 Features
