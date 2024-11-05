@@ -60,6 +60,9 @@ DEFINE_CONSTANT
 constant long TL_SOCKET_CHECK   = 1
 constant long TL_HEARTBEAT	    = 2
 
+constant long TL_SOCKET_CHECK_INTERVAL[]    = { 3000 }
+constant long TL_HEARTBEAT_INTERVAL[]       = { 20000 }
+
 constant char HEARTBEAT_COMMAND[] = "NAV_ESC, '3CV', NAV_CR"
 constant char HEARTBEAT_RESPONSE_HEADER[] = 'Vrb'
 
@@ -77,9 +80,6 @@ DEFINE_TYPE
 (*               VARIABLE DEFINITIONS GO BELOW             *)
 (***********************************************************)
 DEFINE_VARIABLE
-
-volatile long heartbeat[] = { 20000 }
-volatile long socketCheck[] = { 3000 }
 
 volatile _DspObject object[MAX_OBJECTS]
 volatile _NAVCredential credential
@@ -290,7 +290,7 @@ define_function SocketConnectionReset() {
 
     NAVClientSocketClose(dvPort.PORT)
 
-    NAVTimelineStart(TL_SOCKET_CHECK, socketCheck, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
+    NAVTimelineStart(TL_SOCKET_CHECK, TL_SOCKET_CHECK_INTERVAL, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
 }
 
 
@@ -426,7 +426,7 @@ data_event[dvPort] {
             NAVCommand(data.device, "'HSOFF'")
         }
 
-        NAVTimelineStart(TL_HEARTBEAT, heartbeat, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
+        NAVTimelineStart(TL_HEARTBEAT, TL_HEARTBEAT_INTERVAL, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
 
         if (data.device.number == 0) {
             module.Device.SocketConnection.IsConnected = true
