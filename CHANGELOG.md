@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.2](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.4.1...v1.4.2) (2024-11-05)
+
+### 🚀 Performance
+
+-   use constants for timeline intervals ([cc9d9b5](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/cc9d9b5dbaf979975316b4dd4e416abab855c146))
+
 ## [1.4.1](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.4.0...v1.4.1) (2024-10-11)
 
 ### 🐛 Bug Fixes
