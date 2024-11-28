@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.3](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.4.2...v1.4.3) (2024-11-28)
+
+### 🐛 Bug Fixes
+
+-   **level:** fix scaling calculation for level direct setting ([aa5f0ff](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/aa5f0ff5891adbe3084b08f0ef30121953699eca))
+
 ## [1.4.2](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.4.1...v1.4.2) (2024-11-05)
 
 ### 🚀 Performance
