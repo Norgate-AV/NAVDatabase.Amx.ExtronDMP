@@ -482,8 +482,8 @@ data_event[vdvObject] {
                         max = object.MaxLevel / 10
 
                         level = NAVScaleValue(atoi(message.Parameter[1]),
-                                                (max - min),
                                                 255,
+                                                (max - min),
                                                 min)
 
                         if ((level >= min) && (level <= max)) {
