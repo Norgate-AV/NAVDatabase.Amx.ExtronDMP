@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.5](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.4.4...v1.4.5) (2024-11-28)
+
+### 🐛 Bug Fixes
+
+-   **level:** pass input/output range correctly to scale function ([95e2d10](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/95e2d10560ad36ab694f5c0d12349b030c4fbb86))
+
 ## [1.4.4](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.4.3...v1.4.4) (2024-11-28)
 
 ### 🐛 Bug Fixes
