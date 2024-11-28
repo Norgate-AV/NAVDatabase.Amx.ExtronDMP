@@ -475,9 +475,12 @@ data_event[vdvObject] {
                     default: {
                         stack_var sinteger level
 
-                        level = NAVScaleValue(atoi(message.Parameter[1]), 255, (object.MinLevel - object.MinLevel), object.MinLevel)
+                        level = NAVScaleValue(atoi(message.Parameter[1]),
+                                                (object.MaxLevel - object.MinLevel),
+                                                255,
+                                                object.MinLevel)
 
-                        if ((level >= object.MinLevel) && (level <= object.MinLevel)) {
+                        if ((level >= object.MinLevel) && (level <= object.MaxLevel)) {
                             NAVInterModuleApiSendObjectMessage(vdvCommObject,
                                                 NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
                                                                     object.Properties.Api.Id,
