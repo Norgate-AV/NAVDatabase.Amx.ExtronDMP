@@ -55,6 +55,8 @@ DEFINE_CONSTANT
 
 constant long TL_LEVEL_RAMP = 1
 
+constant long TL_LEVEL_RAMP_INTERVAL[] = { 500 }
+
 
 (***********************************************************)
 (*              DATA TYPE DEFINITIONS GO BELOW             *)
@@ -65,8 +67,6 @@ DEFINE_TYPE
 (*               VARIABLE DEFINITIONS GO BELOW             *)
 (***********************************************************)
 DEFINE_VARIABLE
-
-volatile long levelRamp[] = { 500 }
 
 volatile char label[NAV_MAX_CHARS]
 
@@ -367,7 +367,7 @@ define_function ObjectChannelEvent(tchannel channel) {
 
             IncrementLevel(channel.channel)
 
-            NAVTimelineStart(TL_LEVEL_RAMP, levelRamp, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
+            NAVTimelineStart(TL_LEVEL_RAMP, TL_LEVEL_RAMP_INTERVAL, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
         }
     }
 }
