@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.7](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.4.6...v1.4.7) (2025-01-05)
+
+### 🚀 Performance
+
+- **level:** use constant long array for timeline ([924af12](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/924af1261e6f09cc467137d22d083bc367ceece5))
+
 ## [1.4.6](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.4.5...v1.4.6) (2024-12-17)
 
 ### 🐛 Bug Fixes
