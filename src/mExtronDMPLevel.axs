@@ -357,15 +357,15 @@ define_function RampLevel() {
 }
 
 
-define_function ObjectChannelEvent(integer channel) {
-    switch (channel) {
+define_function ObjectChannelEvent(tchannel channel) {
+    switch (channel.channel) {
         case VOL_UP:
         case VOL_DN: {
             if (!object.Properties.Api.IsInitialized) {
                 return
             }
 
-            IncrementLevel(channel)
+            IncrementLevel(channel.channel)
 
             NAVTimelineStart(TL_LEVEL_RAMP, levelRamp, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
         }
@@ -510,7 +510,7 @@ data_event[vdvObject] {
 
 channel_event[vdvObject, 0] {
     on: {
-        ObjectChannelEvent(channel.channel)
+        ObjectChannelEvent(channel)
     }
     off: {
         NAVTimelineStop(TL_LEVEL_RAMP)

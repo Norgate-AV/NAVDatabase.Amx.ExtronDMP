@@ -222,8 +222,8 @@ define_function SetObjectState(_DspState object, integer value) {
 }
 
 
-define_function ObjectChannelEvent(integer channel) {
-    switch (channel) {
+define_function ObjectChannelEvent(tchannel channel) {
+    switch (channel.channel) {
         case VOL_MUTE: {
             SetObjectState(object, !object.State.Actual)
         }
@@ -296,7 +296,7 @@ data_event[vdvObject] {
 
 channel_event[vdvObject, 0] {
     on: {
-        ObjectChannelEvent(channel.channel)
+        ObjectChannelEvent(channel)
     }
     off: {
 
