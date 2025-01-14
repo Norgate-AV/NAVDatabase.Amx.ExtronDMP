@@ -8,11 +8,7 @@
                 "preset": "conventionalcommits",
                 "releaseRules": [],
                 "parserOpts": {
-                    "noteKeywords": [
-                        "BREAKING CHANGE",
-                        "BREAKING CHANGES",
-                        "BREAKING"
-                    ]
+                    "noteKeywords": ["BREAKING CHANGE", "BREAKING CHANGES", "BREAKING"]
                 }
             }
         ],
@@ -21,11 +17,7 @@
             {
                 "preset": "conventionalcommits",
                 "parserOpts": {
-                    "noteKeywords": [
-                        "BREAKING CHANGE",
-                        "BREAKING CHANGES",
-                        "BREAKING"
-                    ]
+                    "noteKeywords": ["BREAKING CHANGE", "BREAKING CHANGES", "BREAKING"]
                 },
                 "writerOpts": {
                     "commitsSort": ["subject", "scope"]
