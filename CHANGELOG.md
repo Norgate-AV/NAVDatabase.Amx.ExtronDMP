@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.8](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.4.7...v1.4.8) (2025-01-16)
+
+### 🐛 Bug Fixes
+
+- fix release scripts ([aad3f9b](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/aad3f9b878757ebb8bff9af68161337b8c07cbeb))
+
 ## [1.4.7](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.4.6...v1.4.7) (2025-01-05)
 
 ### 🚀 Performance
