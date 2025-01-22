@@ -473,7 +473,7 @@ data_event[vdvObject] {
                         }
                     }
                     case 'ABS': {
-                        if ((atoi(message.Parameter[2]) >= object.MinLevel) && (atoi(message.Parameter[2]) <= object.MinLevel)) {
+                        if ((atoi(message.Parameter[2]) >= object.MinLevel) && (atoi(message.Parameter[2]) <= object.MaxLevel)) {
                             NAVInterModuleApiSendObjectMessage(vdvCommObject,
                                                 NAVInterModuleApiBuildObjectMessage(OBJECT_COMMAND_MESSAGE_HEADER,
                                                                     object.Properties.Api.Id,
