@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.10](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.4.9...v1.4.10) (2025-01-22)
+
+### 🐛 Bug Fixes
+
+- **level:** fix VOLUME-ABS comparison ([8c23eb3](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/8c23eb34407c28abf7ce25b7dda2c07ee6149476))
+
 ## [1.4.9](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.4.8...v1.4.9) (2025-01-16)
 
 ### 🐛 Bug Fixes
