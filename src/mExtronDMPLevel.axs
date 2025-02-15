@@ -118,25 +118,10 @@ define_function Register(_DspObject object) {
 define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
     stack_var integer id
 
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_PARSING_STRING_FROM,
-                                            vdvCommObject,
-                                            args.Data))
-
-    // if (NAVContains(module.RxBuffer.Data, args.Data)) {
-    //     module.RxBuffer.Data = "''"
-    // }
-
     id = NAVInterModuleApiGetObjectId(args.Data)
-    // if (id != object.Properties.Id) {
-    //     return
-    // }
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                "'mExtronDMPLevel => Object ID: ', itoa(id), ' Data: ', args.Data");
 
     select {
         active (NAVStartsWith(args.Data, OBJECT_REGISTRATION_MESSAGE_HEADER)): {
-            // object.Properties.Api.Id = NAVInterModuleApiGetObjectId(args.Data)
             object.Properties.Api.Id = id
 
             registerRequested = true
@@ -215,9 +200,6 @@ define_function GetObjectLevel(char response[], char tag[]) {
 
 define_function UpdateObjectLevel(_DspLevel object) {
     stack_var sinteger level
-
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                "'mExtronDMPLevel => Object Soft Limits: ID: ', itoa(object.Properties.Api.Id), ' Min: ', itoa(object.MinLevel), ' Max: ', itoa(object.MaxLevel)")
 
     level = NAVScaleValue((object.Level.Actual - object.MinLevel),
                                 (object.MaxLevel - object.MinLevel),
@@ -399,11 +381,6 @@ data_event[vdvObject] {
     }
     command: {
         stack_var _NAVSnapiMessage message
-
-        NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM,
-                                                data.device,
-                                                data.text))
 
         NAVParseSnapiMessage(data.text, message)
 

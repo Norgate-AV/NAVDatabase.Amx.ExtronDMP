@@ -102,21 +102,7 @@ define_function Register(_DspObject object) {
 define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
     stack_var integer id
 
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_PARSING_STRING_FROM,
-                                            vdvCommObject,
-                                            args.Data))
-
-    // if (NAVContains(module.RxBuffer.Data, args.Data)) {
-    //     module.RxBuffer.Data = "''"
-    // }
-
     id = NAVInterModuleApiGetObjectId(args.Data)
-    // if (id != object.Id) {
-    //     return
-    // }
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                "'mExtronDMPPreset => Object ID: ', itoa(id), ' Data: ', args.Data");
 
     select {
         active (NAVStartsWith(args.Data, OBJECT_REGISTRATION_MESSAGE_HEADER)): {
@@ -180,11 +166,6 @@ data_event[vdvObject] {
     }
     command: {
         stack_var _NAVSnapiMessage message
-
-        NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM,
-                                                data.device,
-                                                data.text))
 
         NAVParseSnapiMessage(data.text, message)
 

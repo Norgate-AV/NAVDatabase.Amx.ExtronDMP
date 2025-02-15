@@ -215,11 +215,6 @@ data_event[vdvLevelObject] {
     string: {
         stack_var _NAVSnapiMessage message
 
-        NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_STRING_FROM,
-                                                data.device,
-                                                data.text))
-
         NAVParseSnapiMessage(data.text, message)
 
         switch (message.Header) {

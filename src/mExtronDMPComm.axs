@@ -107,10 +107,13 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
 
 define_function SendStringRaw(char payload[]) {
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+    if (dvPort.NUMBER == 0) {
+        NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
                 NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_STRING_TO,
                                             dvPort,
                                             payload))
+    }
+
 
     send_string dvPort, "payload"
 }
@@ -207,19 +210,18 @@ define_function SendObjectInitRequest(integer id) {
 
 #IF_DEFINED USING_NAV_STRING_GATHER_CALLBACK
 define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+    if (dvPort.NUMBER == 0) {
+        NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
                 NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_PARSING_STRING_FROM,
                                             dvPort,
                                             args.Data))
+    }
 
     args.Data = NAVStripCharsFromRight(args.Data, length_array(args.Delimiter))
 
     select {
         active (NAVContains(args.Data, HEARTBEAT_RESPONSE_HEADER)): {
             module.Device.IsCommunicating = true
-
-            NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => Received heartbeat response from device'")
-
             InitializeObjects()
         }
         active (true): {
@@ -232,8 +234,6 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
                         continue
                     }
 
-                    NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                                "'mExtronDMPComm => Found tag ', object[x].Api.Tag[z], ' in response from device: ', args.Data")
                     SendObjectResponse(x, args.Data)
 
                     x = length_array(vdvCommObjects) + 1
@@ -276,8 +276,6 @@ define_function SendHeartbeat() {
     if (NAVDevicePriorityQueueHasItems(priorityQueue) || priorityQueue.Busy) {
         return
     }
-
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => Enqueuing heartbeat command to device'")
 
     NAVDevicePriorityQueueEnqueue(priorityQueue,
                                     NAVInterModuleApiGetPollMessageCommand("'HEARTBEAT|', NAV_ESC, '3CV', NAV_CR"),
@@ -433,10 +431,12 @@ data_event[dvPort] {
         }
     }
     string: {
-        NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_STRING_FROM,
-                                                data.device,
-                                                data.text))
+        if (data.device.number == 0) {
+            NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
+                        NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_STRING_FROM,
+                                                    data.device,
+                                                    data.text))
+        }
 
         Process(module.RxBuffer)
     }
@@ -471,11 +471,6 @@ data_event[vdvObject] {
     command: {
         stack_var _NAVSnapiMessage message
 
-        NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM,
-                                                data.device,
-                                                data.text))
-
         NAVParseSnapiMessage(data.text, message)
 
         switch (message.Header) {
@@ -498,11 +493,6 @@ data_event[vdvCommObjects] {
     command: {
         stack_var _NAVSnapiMessage message
         stack_var integer index
-
-        NAVErrorLog(NAV_LOG_LEVEL_DEBUG,
-                    NAVFormatStandardLogMessage(NAV_STANDARD_LOG_MESSAGE_TYPE_COMMAND_FROM,
-                                                data.device,
-                                                data.text))
 
         NAVParseSnapiMessage(data.text, message)
         index = get_last(vdvCommObjects)
