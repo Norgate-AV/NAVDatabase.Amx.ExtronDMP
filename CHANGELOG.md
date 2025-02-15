@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.11](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.4.10...v1.4.11) (2025-02-15)
+
+### 🚀 Performance
+
+- remove unnecessary logging ([d4032e9](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/d4032e966d63a2e281db5c9076ee8e0d3f330a80))
+
 ## [1.4.10](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.4.9...v1.4.10) (2025-01-22)
 
 ### 🐛 Bug Fixes

@@ -1,7 +1,7 @@
 {
     "name": "NAVDatabase.Amx.ExtronDMP",
     "description": "NetLinx module for Extron DMP range of DSP's",
-    "version": "1.4.10",
+    "version": "1.4.11",
     "license": "MIT",
     "files": ["src/*.axs", "src/*.tko", "lib/*.axi", "SymLink.ps1", "LICENSE", "README.md"],
     "repository": {
