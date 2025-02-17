@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.5.0](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.4.11...v1.5.0) (2025-02-17)
+
+### 🌟 Features
+
+- bump NAVFoundation.Amx to 1.27.0 ([b711af9](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/commit/b711af9eb473b91fad13d43b1d488f82091fc027))
+
 ## [1.4.11](https://github.com/Norgate-AV/NAVDatabase.Amx.ExtronDMP/compare/v1.4.10...v1.4.11) (2025-02-15)
 
 ### 🚀 Performance
