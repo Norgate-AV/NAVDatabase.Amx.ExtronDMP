@@ -197,7 +197,7 @@ define_function SendObjectRegistrationRequest(integer id) {
 
 
 define_function SendObjectResponse(integer id, char data[]) {
-    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => Sending message to Object ID: ', itoa(id), ' :: ', data")
+    NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => Sending response to Object ID: ', itoa(id), ' :: ', data")
     send_string vdvCommObjects[id], "NAVInterModuleApiBuildObjectResponseMessage(data)"
 }
 
@@ -288,7 +288,10 @@ define_function SocketConnectionReset() {
 
     NAVClientSocketClose(dvPort.PORT)
 
-    NAVTimelineStart(TL_SOCKET_CHECK, TL_SOCKET_CHECK_INTERVAL, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
+    NAVTimelineStart(TL_SOCKET_CHECK,
+                    TL_SOCKET_CHECK_INTERVAL,
+                    TIMELINE_ABSOLUTE,
+                    TIMELINE_REPEAT)
 }
 
 
@@ -424,7 +427,10 @@ data_event[dvPort] {
             NAVCommand(data.device, "'HSOFF'")
         }
 
-        NAVTimelineStart(TL_HEARTBEAT, TL_HEARTBEAT_INTERVAL, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
+        NAVTimelineStart(TL_HEARTBEAT,
+                        TL_HEARTBEAT_INTERVAL,
+                        TIMELINE_ABSOLUTE,
+                        TIMELINE_REPEAT)
 
         if (data.device.number == 0) {
             module.Device.SocketConnection.IsConnected = true
