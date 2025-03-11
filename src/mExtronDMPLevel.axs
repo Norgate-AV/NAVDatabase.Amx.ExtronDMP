@@ -9,7 +9,11 @@ MODULE_NAME='mExtronDMPLevel'	(
 #DEFINE USING_NAV_STRING_GATHER_CALLBACK
 #include 'NAVFoundation.ModuleBase.axi'
 #include 'NAVFoundation.Math.axi'
+#include 'NAVFoundation.StringUtils.axi'
+#include 'NAVFoundation.ErrorLogUtils.axi'
 #include 'NAVFoundation.InterModuleApi.axi'
+#include 'NAVFoundation.SnapiHelpers.axi'
+#include 'NAVFoundation.TimelineUtils.axi'
 #include 'LibExtronDMP.axi'
 
 /*
@@ -72,8 +76,8 @@ volatile char label[NAV_MAX_CHARS]
 
 volatile _DspLevel object
 
-volatile integer registerReady
-volatile integer registerRequested
+volatile char registerReady
+volatile char registerRequested
 
 
 (***********************************************************)
@@ -94,6 +98,7 @@ DEFINE_MUTUALLY_EXCLUSIVE
 
 define_function Register(_DspObject object) {
     stack_var char message[NAV_MAX_BUFFER]
+
     if (!registerRequested || !registerReady || !object.Api.Id) {
         return
     }
@@ -217,7 +222,7 @@ define_function UpdateObjectLevel(_DspLevel object) {
 define_function GetObjectLimits(char response[], char tag[]) {
     remove_string(response, "tag", 1)
 
-    object.MaxLevel = atoi(NAVStripCharsFromRight(remove_string(response, '*', 1), 1))
+    object.MaxLevel = atoi(NAVStripRight(remove_string(response, '*', 1), 1))
     object.MinLevel = atoi(response)
 
     if (abs_value(object.MaxLevel) >= 1000) {
@@ -349,7 +354,10 @@ define_function ObjectChannelEvent(tchannel channel) {
 
             IncrementLevel(channel.channel)
 
-            NAVTimelineStart(TL_LEVEL_RAMP, TL_LEVEL_RAMP_INTERVAL, TIMELINE_ABSOLUTE, TIMELINE_REPEAT)
+            NAVTimelineStart(TL_LEVEL_RAMP,
+                            TL_LEVEL_RAMP_INTERVAL,
+                            TIMELINE_ABSOLUTE,
+                            TIMELINE_REPEAT)
         }
     }
 }

@@ -62,9 +62,7 @@ DEFINE_TYPE
 (***********************************************************)
 DEFINE_VARIABLE
 
-volatile integer locked
-
-volatile integer blinkerEnabled = false
+volatile char locked = false
 
 
 (***********************************************************)
@@ -82,6 +80,13 @@ DEFINE_MUTUALLY_EXCLUSIVE
 (***********************************************************)
 (* EXAMPLE: DEFINE_FUNCTION <RETURN_TYPE> <NAME> (<PARAMETERS>) *)
 (* EXAMPLE: DEFINE_CALL '<NAME>' (<PARAMETERS>) *)
+
+define_function UpdateFeedback() {
+    [dvTP, VOL_MUTE]	= ([vdvObject, VOL_MUTE_FB])
+    [dvTP, LOCK_TOGGLE]	= (locked)
+    [dvTP, LOCK_ON]	= (locked)
+    [dvTP, LOCK_OFF]	= (!locked)
+}
 
 
 (***********************************************************)
@@ -104,48 +109,28 @@ button_event[dvTP, 0] {
             }
             case LOCK_TOGGLE: {
                 locked = !locked
+                UpdateFeedback()
             }
             case LOCK_ON: {
                 locked = true
+                UpdateFeedback()
             }
             case LOCK_OFF: {
                 locked = false
+                UpdateFeedback()
             }
         }
     }
 }
 
 
-data_event[vdvObject] {
-    command: {
-        stack_var _NAVSnapiMessage message
-
-        NAVParseSnapiMessage(data.text, message)
-
-        switch (message.Header) {
-            case 'PROPERTY': {
-                switch (message.Parameter[1]) {
-                    case 'MUTE_BLINK': {
-                        blinkerEnabled = atoi(NAVStringToBoolean(message.Parameter[2]))
-                    }
-                }
-            }
-        }
+channel_event[vdvObject, VOL_MUTE_FB] {
+    on: {
+        UpdateFeedback()
     }
-}
-
-
-timeline_event[TL_NAV_FEEDBACK] {
-    if (!blinkerEnabled) {
-        [dvTP, VOL_MUTE]    = ([vdvObject, VOL_MUTE_FB])
+    off: {
+        UpdateFeedback()
     }
-    else {
-        [dvTP, VOL_MUTE]    = ([vdvObject, VOL_MUTE_FB] && NAVBlinker)
-    }
-
-    [dvTP, LOCK_TOGGLE]    = (locked)
-    [dvTP, LOCK_ON]    = (locked)
-    [dvTP, LOCK_OFF]    = (!locked)
 }
 
 

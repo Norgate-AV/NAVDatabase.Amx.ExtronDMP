@@ -67,9 +67,9 @@ DEFINE_TYPE
 (***********************************************************)
 DEFINE_VARIABLE
 
-volatile integer locked
+volatile char locked = false
 
-volatile integer levelTouched
+volatile char levelTouched = false
 
 volatile sinteger currentLevel
 
@@ -115,6 +115,13 @@ define_function LevelEventHandler(dev device, tlevel level) {
 }
 
 
+define_function UpdateFeedback() {
+    [dvTP, LOCK_TOGGLE]	= (locked)
+    [dvTP, LOCK_ON]	= (locked)
+    [dvTP, LOCK_OFF]	= (!locked)
+}
+
+
 (***********************************************************)
 (*                STARTUP CODE GOES BELOW                  *)
 (***********************************************************)
@@ -143,12 +150,15 @@ button_event[dvTP, 0] {
             }
             case LOCK_TOGGLE: {
                 locked = !locked
+                UpdateFeedback()
             }
             case LOCK_ON: {
                 locked = true
+                UpdateFeedback()
             }
             case LOCK_OFF: {
                 locked = false
+                UpdateFeedback()
             }
             case LEVEL_TOUCH: {
                 levelTouched = true
@@ -214,13 +224,6 @@ data_event[vdvLevelObject] {
             }
         }
     }
-}
-
-
-timeline_event[TL_NAV_FEEDBACK] {
-    [dvTP, LOCK_TOGGLE]	= (locked)
-    [dvTP, LOCK_ON]	= (locked)
-    [dvTP, LOCK_OFF]	= (!locked)
 }
 
 

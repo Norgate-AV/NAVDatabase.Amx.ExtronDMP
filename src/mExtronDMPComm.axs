@@ -11,9 +11,13 @@ MODULE_NAME='mExtronDMPComm'	(
 #DEFINE USING_NAV_MODULE_BASE_PROPERTY_EVENT_CALLBACK
 #DEFINE USING_NAV_STRING_GATHER_CALLBACK
 #include 'NAVFoundation.ModuleBase.axi'
+#include 'NAVFoundation.StringUtils.axi'
+#include 'NAVFoundation.ErrorLogUtils.axi'
 #include 'NAVFoundation.SocketUtils.axi'
 #include 'NAVFoundation.DevicePriorityQueue.axi'
 #include 'NAVFoundation.InterModuleApi.axi'
+#include 'NAVFoundation.SnapiHelpers.axi'
+#include 'NAVFoundation.TimelineUtils.axi'
 #include 'LibExtronDMP.axi'
 
 /*
@@ -84,10 +88,10 @@ DEFINE_VARIABLE
 volatile _DspObject object[MAX_OBJECTS]
 volatile _NAVCredential credential
 
-volatile integer initializing = false
+volatile char initializing = false
 volatile integer initializingObjectID
 
-volatile integer ready = false
+volatile char ready = false
 
 
 (***********************************************************)
@@ -160,6 +164,7 @@ define_function InitializeObjects() {
         if (x == length_array(vdvCommObjects) && !initializing) {
             initializingObjectID = x
             module.Device.IsInitialized = true
+            UpdateFeedback()
         }
     }
 }
@@ -168,6 +173,7 @@ define_function InitializeObjects() {
 #IF_DEFINED USING_NAV_DEVICE_PRIORITY_QUEUE_FAILED_RESPONSE_EVENT_CALLBACK
 define_function NAVDevicePriorityQueueFailedResponseEventCallback(_NAVDevicePriorityQueue queue) {
     module.Device.IsCommunicating = false
+    UpdateFeedback()
 }
 #END_IF
 
@@ -182,6 +188,8 @@ define_function ReInitializeObjects() {
 
     initializing = false
     module.Device.IsInitialized = false
+    UpdateFeedback()
+
     initializingObjectID = 1
 
     for (x = 1; x <= length_array(object); x++) {
@@ -221,7 +229,11 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
 
     select {
         active (NAVContains(args.Data, HEARTBEAT_RESPONSE_HEADER)): {
-            module.Device.IsCommunicating = true
+            if (!module.Device.IsCommunicating) {
+                module.Device.IsCommunicating = true
+                UpdateFeedback()
+            }
+
             InitializeObjects()
         }
         active (true): {
@@ -343,8 +355,6 @@ define_function ObjectRegister(integer index, tdata data) {
 
     total = length_array(vdvCommObjects)
     count = GetObjectRegistrationCount(total)
-    // #warn 'This may not work as expected.'
-    // count = NAVInterModuleApiGetObjectRegistrationCount(object.Api, total)
     NAVErrorLog(NAV_LOG_LEVEL_DEBUG, "'mExtronDMPComm => ', itoa(count), ' out of ', itoa(total), ' objects are now registered'")
 
     if (count < total) {
@@ -404,6 +414,14 @@ define_function ObjectResponseOk(tdata data) {
 }
 
 
+define_function UpdateFeedback() {
+    [vdvObject, NAV_IP_CONNECTED]	= (module.Device.SocketConnection.IsConnected &&
+                                        module.Device.SocketConnection.IsAuthenticated)
+    [vdvObject, DEVICE_COMMUNICATING] = (module.Device.IsCommunicating)
+    [vdvObject, DATA_INITIALIZED] = (module.Device.IsInitialized)
+}
+
+
 (***********************************************************)
 (*                STARTUP CODE GOES BELOW                  *)
 (***********************************************************)
@@ -434,6 +452,8 @@ data_event[dvPort] {
 
         if (data.device.number == 0) {
             module.Device.SocketConnection.IsConnected = true
+            module.Device.SocketConnection.IsAuthenticated = true
+            UpdateFeedback()
         }
     }
     string: {
@@ -453,6 +473,7 @@ data_event[dvPort] {
             module.Device.SocketConnection.IsConnected = false
             module.Device.SocketConnection.IsAuthenticated = false
             module.Device.IsCommunicating = false
+            UpdateFeedback()
 
             NAVTimelineStop(TL_HEARTBEAT)
         }
@@ -462,6 +483,7 @@ data_event[dvPort] {
             module.Device.SocketConnection.IsConnected = false
             module.Device.SocketConnection.IsAuthenticated = false
             module.Device.IsCommunicating = false
+            UpdateFeedback()
         }
 
         NAVErrorLog(NAV_LOG_LEVEL_ERROR,
@@ -528,14 +550,6 @@ timeline_event[TL_HEARTBEAT] { SendHeartbeat() }
 
 
 timeline_event[TL_SOCKET_CHECK] { MaintainSocketConnection() }
-
-
-timeline_event[TL_NAV_FEEDBACK] {
-    [vdvObject, NAV_IP_CONNECTED]	= (module.Device.SocketConnection.IsConnected &&
-                                        module.Device.SocketConnection.IsAuthenticated)
-    [vdvObject, DEVICE_COMMUNICATING] = (module.Device.IsCommunicating)
-    [vdvObject, DATA_INITIALIZED] = (module.Device.IsInitialized)
-}
 
 
 (***********************************************************)

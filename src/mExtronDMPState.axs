@@ -8,7 +8,10 @@ MODULE_NAME='mExtronDMPState'	(
 #DEFINE USING_NAV_MODULE_BASE_PROPERTY_EVENT_CALLBACK
 #DEFINE USING_NAV_STRING_GATHER_CALLBACK
 #include 'NAVFoundation.ModuleBase.axi'
+#include 'NAVFoundation.StringUtils.axi'
+#include 'NAVFoundation.ErrorLogUtils.axi'
 #include 'NAVFoundation.InterModuleApi.axi'
+#include 'NAVFoundation.SnapiHelpers.axi'
 #include 'LibExtronDMP.axi'
 
 /*
@@ -64,8 +67,8 @@ DEFINE_VARIABLE
 
 volatile _DspState object
 
-volatile integer registerReady
-volatile integer registerRequested
+volatile char registerReady
+volatile char registerRequested
 
 
 (***********************************************************)
@@ -162,6 +165,8 @@ define_function GetObjectState(char response[], char tag[]) {
 
     object.State.Actual = atoi(response)
 
+    UpdateFeedback()
+
     if (object.Properties.Api.IsInitialized) {
         return
     }
@@ -214,6 +219,11 @@ define_function ObjectChannelEvent(tchannel channel) {
             SetObjectState(object, !object.State.Actual)
         }
     }
+}
+
+
+define_function UpdateFeedback() {
+    [vdvObject, VOL_MUTE_FB]	= (object.State.Actual)
 }
 
 
@@ -282,11 +292,6 @@ channel_event[vdvObject, 0] {
     off: {
 
     }
-}
-
-
-timeline_event[TL_NAV_FEEDBACK] {
-    [vdvObject, VOL_MUTE_FB]	= (object.State.Actual)
 }
 
 

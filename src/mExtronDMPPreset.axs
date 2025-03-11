@@ -6,6 +6,8 @@ MODULE_NAME='mExtronDMPPreset'	(
 (***********************************************************)
 #DEFINE USING_NAV_STRING_GATHER_CALLBACK
 #include 'NAVFoundation.ModuleBase.axi'
+#include 'NAVFoundation.StringUtils.axi'
+#include 'NAVFoundation.ErrorLogUtils.axi'
 #include 'NAVFoundation.InterModuleApi.axi'
 #include 'LibExtronDMP.axi'
 
@@ -62,8 +64,8 @@ DEFINE_VARIABLE
 
 volatile _DspObject object
 
-volatile integer registerReady = true
-volatile integer registerRequested
+volatile char registerReady = true
+volatile char registerRequested
 
 
 (***********************************************************)
