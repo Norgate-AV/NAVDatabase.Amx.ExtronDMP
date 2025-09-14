@@ -4,7 +4,7 @@ MODULE_NAME='mExtronDMPStateUI'    (
                                 )
 
 (***********************************************************)
-#include 'NAVFoundation.ModuleBase.axi'
+#include 'NAVFoundation.SnapiHelpers.axi'
 
 /*
  _   _                       _          ___     __
