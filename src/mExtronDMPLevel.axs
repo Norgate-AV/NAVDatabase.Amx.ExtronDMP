@@ -74,6 +74,7 @@ DEFINE_VARIABLE
 
 volatile char label[NAV_MAX_CHARS]
 
+volatile _NAVModule module
 volatile _DspLevel object
 
 volatile char registerReady
@@ -367,6 +368,7 @@ define_function ObjectChannelEvent(tchannel channel) {
 (*                STARTUP CODE GOES BELOW                  *)
 (***********************************************************)
 DEFINE_START {
+    NAVModuleInit(module)
     create_buffer vdvCommObject, module.RxBuffer.Data
     DspLevelInit(object)
 }

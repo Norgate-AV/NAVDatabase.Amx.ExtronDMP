@@ -85,6 +85,9 @@ DEFINE_TYPE
 (***********************************************************)
 DEFINE_VARIABLE
 
+volatile _NAVModule module
+volatile _NAVDevicePriorityQueue queue
+
 volatile _DspObject object[MAX_OBJECTS]
 volatile _NAVCredential credential
 
@@ -255,7 +258,7 @@ define_function NAVStringGatherCallback(_NAVStringGatherResult args) {
         }
     }
 
-    NAVDevicePriorityQueueGoodResponse(priorityQueue)
+    NAVDevicePriorityQueueGoodResponse(queue)
 }
 #END_IF
 
@@ -285,11 +288,11 @@ define_function MaintainSocketConnection() {
 
 
 define_function SendHeartbeat() {
-    if (NAVDevicePriorityQueueHasItems(priorityQueue) || priorityQueue.Busy) {
+    if (NAVDevicePriorityQueueHasItems(queue) || queue.Busy) {
         return
     }
 
-    NAVDevicePriorityQueueEnqueue(priorityQueue,
+    NAVDevicePriorityQueueEnqueue(queue,
                                     NAVInterModuleApiGetPollMessageCommand("'HEARTBEAT|', NAV_ESC, '3CV', NAV_CR"),
                                     false)
 }
@@ -406,11 +409,11 @@ define_function ObjectInitDone(integer index, tdata data) {
 
 
 define_function ObjectResponseOk(tdata data) {
-    if (NAVInterModuleApiGetObjectFullMessage(data.text) != NAVInterModuleApiGetObjectFullMessage(priorityQueue.LastMessage)) {
+    if (NAVInterModuleApiGetObjectFullMessage(data.text) != NAVInterModuleApiGetObjectFullMessage(queue.LastMessage)) {
         return
     }
 
-    NAVDevicePriorityQueueGoodResponse(priorityQueue)
+    NAVDevicePriorityQueueGoodResponse(queue)
 }
 
 
@@ -426,6 +429,8 @@ define_function UpdateFeedback() {
 (*                STARTUP CODE GOES BELOW                  *)
 (***********************************************************)
 DEFINE_START {
+    NAVModuleInit(module)
+    NAVDevicePriorityQueueInit(queue)
     create_buffer dvPort, module.RxBuffer.Data
     Reset()
 }
@@ -527,10 +532,10 @@ data_event[vdvCommObjects] {
 
         switch (message.Header) {
             case OBJECT_COMMAND_MESSAGE_HEADER: {
-                NAVDevicePriorityQueueEnqueue(priorityQueue, "data.text", true)
+                NAVDevicePriorityQueueEnqueue(queue, "data.text", true)
             }
             case OBJECT_QUERY_MESSAGE_HEADER: {
-                NAVDevicePriorityQueueEnqueue(priorityQueue, "data.text", false)
+                NAVDevicePriorityQueueEnqueue(queue, "data.text", false)
             }
             case OBJECT_RESPONSE_OK_MESSAGE_HEADER: {
                 ObjectResponseOk(data)
@@ -550,6 +555,11 @@ timeline_event[TL_HEARTBEAT] { SendHeartbeat() }
 
 
 timeline_event[TL_SOCKET_CHECK] { MaintainSocketConnection() }
+
+
+timeline_event[TL_NAV_DEVICE_PRIORITY_QUEUE_FAILED_RESPONSE] {
+    NAVDevicePriorityQueueFailedResponse(queue)
+}
 
 
 (***********************************************************)

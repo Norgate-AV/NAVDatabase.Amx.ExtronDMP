@@ -65,6 +65,7 @@ DEFINE_TYPE
 (***********************************************************)
 DEFINE_VARIABLE
 
+volatile _NAVModule module
 volatile _DspState object
 
 volatile char registerReady
@@ -231,6 +232,7 @@ define_function UpdateFeedback() {
 (*                STARTUP CODE GOES BELOW                  *)
 (***********************************************************)
 DEFINE_START {
+    NAVModuleInit(module)
     create_buffer vdvCommObject, module.RxBuffer.Data
     DspStateInit(object)
 }

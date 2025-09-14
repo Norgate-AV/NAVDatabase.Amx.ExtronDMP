@@ -62,6 +62,7 @@ DEFINE_TYPE
 (***********************************************************)
 DEFINE_VARIABLE
 
+volatile _NAVModule module
 volatile _DspObject object
 
 volatile char registerReady = true
@@ -147,6 +148,7 @@ define_function GetInitialized(_DspObject object) {
 (*                STARTUP CODE GOES BELOW                  *)
 (***********************************************************)
 DEFINE_START {
+    NAVModuleInit(module)
     create_buffer vdvCommObject, module.RxBuffer.Data
 }
 
